@@ -20,6 +20,10 @@ jobs:
        startsWith(github.ref, 'refs/tags/v') &&
        github.event.base_ref == 'refs/heads/main')
 
+    # Node.js 24 강제 적용 - 2026년 6월부터 Node 20 actions 지원 중단
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       # ── 1. 소스 체크아웃 ──────────────────────────────
       - name: Checkout

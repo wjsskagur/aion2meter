@@ -115,7 +115,9 @@ public class PacketCaptureService : IDisposable
         if (!_isCapturing) return;
         try
         {
-            _device?.OnPacketArrival -= OnPacketArrival; // 핸들러 해제 후 캡처 중단
+            // ?. 로 이벤트 -= 는 C# 14+ 문법 → 명시적 null 체크로 대체
+            if (_device != null)
+                _device.OnPacketArrival -= OnPacketArrival;
             _device?.StopCapture();
             _device?.Close();
         }
