@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:Aion2Meter.ViewModels"
         Title="Aion2 Meter"
-        Width="320" MinWidth="240"
+        Width="{Binding Settings.WindowWidth, Mode=TwoWay}"
+        MinWidth="240" MaxWidth="600"
         SizeToContent="Height"
         Background="Transparent"
         WindowStyle="None"
@@ -135,7 +136,7 @@
                         <DataTemplate>
                             <Grid Margin="6,1">
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="22"/>
+                                    <RowDefinition Height="{Binding DataContext.Settings.RowHeight, RelativeSource={RelativeSource AncestorType=Window}}"/>
                                     <RowDefinition Height="4"/>
                                 </Grid.RowDefinitions>
 
@@ -164,14 +165,18 @@
                                         <ColumnDefinition Width="70"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="{Binding Name}"
-                                               FontSize="11" FontWeight="Medium" VerticalAlignment="Center"
+                                               FontSize="{Binding DataContext.NameFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                               FontWeight="Medium" VerticalAlignment="Center"
                                                Foreground="{Binding IsLocalPlayer, Converter={StaticResource LocalPlayerColor}}"
                                                TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Grid.Column="1"
                                                Text="{Binding TotalDamage, Converter={StaticResource DamageFormat}}"
-                                               FontSize="10" VerticalAlignment="Center"
+                                               FontSize="{Binding DataContext.DamageFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                               VerticalAlignment="Center"
                                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0"/>
-                                    <TextBlock Grid.Column="2" FontSize="11" FontWeight="Bold"
+                                    <TextBlock Grid.Column="2"
+                                               FontSize="{Binding DataContext.DpsFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                               FontWeight="Bold"
                                                VerticalAlignment="Center" HorizontalAlignment="Right"
                                                Foreground="White">
                                         <Run Text="{Binding Dps, Converter={StaticResource DpsFormat}}"/>

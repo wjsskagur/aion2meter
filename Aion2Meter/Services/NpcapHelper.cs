@@ -1,31 +1,37 @@
 using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Reflection;
 
 namespace Aion2Meter.Services;
 
 /// <summary>
-/// Npcap 설치 여부 확인 및 자동 설치 지원.
-/// 
-/// 왜 Npcap이 별도 설치가 필요한가:
-/// Npcap은 커널 드라이버 수준에서 동작하기 때문에
-/// .exe 안에 번들링해서 실행하는 것이 불가능함.
-/// → 대신 Npcap 설치 파일을 리소스로 포함하고, 미설치 시 자동 실행.
+/// Npcap 설치 여부 확인 및 설치 지원.
 /// </summary>
 public static class NpcapHelper
 {
-    /// <summary>
-    /// Npcap 설치 여부 확인.
-    /// 레지스트리 키로 확인 (Npcap 공식 설치 경로).
-    /// </summary>
+    private const string NPCAP_DOWNLOAD_URL = "https://npcap.com/dist/npcap-1.80.exe";
+
     public static bool IsNpcapInstalled()
     {
         try
         {
-            // Npcap은 설치 시 이 레지스트리 키를 생성함
-            using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Npcap");
-            return key != null;
+            // 방법 1: Npcap 공식 레지스트리 키
+            using var key1 = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Npcap");
+            if (key1 != null) return true;
+
+            // 방법 2: WinPcap 호환 모드 레지스트리 키
+            using var key2 = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\npcap");
+            if (key2 != null) return true;
+
+            // 방법 3: wpcap.dll 파일 존재 확인 (System32)
+            string dllPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.System),
+                "wpcap.dll");
+            if (File.Exists(dllPath)) return true;
+
+            return false;
         }
         catch
         {
@@ -34,36 +40,51 @@ public static class NpcapHelper
     }
 
     /// <summary>
-    /// Npcap 설치 파일 실행.
-    /// npcap-installer.exe를 앱과 같은 폴더에 두거나, 
-    /// 빌드 시 리소스로 포함(EmbeddedResource)한 경우 임시 폴더로 추출 후 실행.
-    /// 
-    /// WinPcap API 호환 모드(/winpcap_mode)를 강제: SharpPcap이 이 모드 필요.
+    /// Npcap 설치.
+    /// 우선순위: 앱 폴더 번들 파일 → 임시폴더 추출 → 웹 다운로드
     /// </summary>
-    public static bool InstallNpcap()
+    public static async Task<bool> InstallNpcapAsync(IProgress<string>? progress = null)
     {
+        string? installerPath = null;
+
         try
         {
-            // 앱 실행 파일과 같은 폴더에서 설치 파일 탐색
-            string appDir = AppContext.BaseDirectory;
-            string installerPath = Path.Combine(appDir, "npcap-installer.exe");
-
-            if (!File.Exists(installerPath))
+            // 1순위: 앱 실행 폴더에 npcap-installer.exe 가 있으면 사용
+            string bundledPath = Path.Combine(AppContext.BaseDirectory, "npcap-installer.exe");
+            if (File.Exists(bundledPath))
             {
-                // 리소스에서 추출 (빌드 시 EmbeddedResource로 포함한 경우)
-                string? extracted = ExtractInstallerFromResource();
-                if (extracted == null) return false;
-                installerPath = extracted;
+                installerPath = bundledPath;
+                progress?.Report("번들 설치 파일 사용 중...");
             }
 
+            // 2순위: 리소스에서 추출
+            if (installerPath == null)
+            {
+                installerPath = ExtractInstallerFromResource();
+                if (installerPath != null)
+                    progress?.Report("내장 설치 파일 추출 중...");
+            }
+
+            // 3순위: 웹에서 다운로드
+            if (installerPath == null)
+            {
+                progress?.Report("Npcap 다운로드 중...");
+                installerPath = await DownloadNpcapAsync();
+            }
+
+            if (installerPath == null)
+            {
+                progress?.Report("다운로드 실패");
+                return false;
+            }
+
+            progress?.Report("Npcap 설치 중...");
             var psi = new ProcessStartInfo
             {
                 FileName = installerPath,
-                // /winpcap_mode: WinPcap API 호환 모드 (SharpPcap 필수 조건)
-                // /S: 설치 시 UI 최소화 (silent는 아님 - 라이선스 동의 필요)
                 Arguments = "/winpcap_mode",
                 UseShellExecute = true,
-                Verb = "runas" // UAC 권한 상승 (이미 관리자지만 명시)
+                Verb = "runas"
             };
 
             var process = Process.Start(psi);
@@ -76,13 +97,28 @@ public static class NpcapHelper
         }
     }
 
+    private static async Task<string?> DownloadNpcapAsync()
+    {
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+            string tempPath = Path.Combine(Path.GetTempPath(), "npcap-installer.exe");
+            var bytes = await http.GetByteArrayAsync(NPCAP_DOWNLOAD_URL);
+            await File.WriteAllBytesAsync(tempPath, bytes);
+            return tempPath;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static string? ExtractInstallerFromResource()
     {
         try
         {
             var assembly = Assembly.GetExecutingAssembly();
             string resourceName = "Aion2Meter.Resources.npcap-installer.exe";
-
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream == null) return null;
 

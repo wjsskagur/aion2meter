@@ -33,14 +33,21 @@ public partial class App : Application
                 var result = MessageBox.Show(
                     "Aion2 DPS Meter를 사용하려면 Npcap이 필요합니다.\n\n" +
                     "지금 설치하시겠습니까?\n" +
-                    "(설치 파일이 동봉되어 있지 않은 경우 https://npcap.com 에서 직접 설치하세요)\n\n" +
+                    "(설치 파일이 없으면 https://npcap.com 에서 자동 다운로드됩니다)\n\n" +
                     "⚠ Install Npcap in WinPcap API-compatible Mode 를 반드시 체크하세요.",
                     "Npcap 필요",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning);
 
                 if (result == MessageBoxResult.Yes)
-                    NpcapHelper.InstallNpcap();
+                {
+                    bool ok = await NpcapHelper.InstallNpcapAsync();
+                    if (!ok)
+                        MessageBox.Show(
+                            "Npcap 설치에 실패했습니다.\nhttps://npcap.com 에서 직접 설치해주세요.\n\n" +
+                            "⚠ Install Npcap in WinPcap API-compatible Mode 체크 필수",
+                            "설치 실패", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
 
             // ── 업데이트 체크 (백그라운드, 앱 시작 블로킹 안 함) ──

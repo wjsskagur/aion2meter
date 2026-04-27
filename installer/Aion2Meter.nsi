@@ -58,14 +58,27 @@ Section "MainSection" SEC01
   ; ── Npcap 설치 (미설치 시에만) ──────────────────────
   ReadRegStr $0 HKLM "SOFTWARE\Npcap" ""
   ${If} $0 == ""
-    DetailPrint "Npcap 설치 중..."
+    DetailPrint "Npcap 설치 중... (잠시 기다려주세요)"
     File "npcap-installer.exe"
+
+    ; /winpcap_mode : SharpPcap 필수 조건
+    ; 설치 완료까지 대기 (ExecWait)
     ExecWait '"$INSTDIR\npcap-installer.exe" /winpcap_mode' $1
-    ${If} $1 != 0
-      MessageBox MB_OK|MB_ICONEXCLAMATION \
-        "Npcap 설치에 실패했습니다.$\n수동으로 설치해주세요: https://npcap.com"
-    ${EndIf}
+
+    ; 설치 파일 정리
     Delete "$INSTDIR\npcap-installer.exe"
+
+    ${If} $1 != 0
+      ; 종료 코드가 0이 아니면 실패
+      MessageBox MB_OK|MB_ICONEXCLAMATION         "Npcap 설치에 실패했습니다. (종료 코드: $1)$
+$
+수동으로 설치해주세요:$
+https://npcap.com$
+$
+반드시 'Install Npcap in WinPcap API-compatible Mode'를 체크하세요."
+    ${Else}
+      DetailPrint "Npcap 설치 완료"
+    ${EndIf}
   ${Else}
     DetailPrint "Npcap 이미 설치됨, 건너뜀"
   ${EndIf}

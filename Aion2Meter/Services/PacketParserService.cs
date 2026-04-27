@@ -124,12 +124,18 @@ public class PacketParserService
 
         if (damage <= 0) return; // 미스 또는 회피
 
+        // 이름 미수신 시 "플레이어 N" 형태로 표시 (Entity_12345 대신 가독성 개선)
+        string attackerName = _entityNames.TryGetValue(attackerId, out var aName)
+            ? aName : $"플레이어_{attackerId % 1000:D3}";
+        string targetName = _entityNames.TryGetValue(targetId, out var tName)
+            ? tName : $"플레이어_{targetId % 1000:D3}";
+
         var evt = new CombatEvent
         {
             AttackerId = attackerId,
-            AttackerName = _entityNames.GetValueOrDefault(attackerId, $"Entity_{attackerId}"),
+            AttackerName = attackerName,
             TargetId = targetId,
-            TargetName = _entityNames.GetValueOrDefault(targetId, $"Entity_{targetId}"),
+            TargetName = targetName,
             SkillId = skillId,
             SkillName = GetSkillName(skillId),
             Damage = damage,
@@ -154,12 +160,17 @@ public class PacketParserService
 
         if (damage <= 0) return;
 
+        string attackerName = _entityNames.TryGetValue(attackerId, out var aName)
+            ? aName : $"플레이어_{attackerId % 1000:D3}";
+        string targetName = _entityNames.TryGetValue(targetId, out var tName)
+            ? tName : $"플레이어_{targetId % 1000:D3}";
+
         var evt = new CombatEvent
         {
             AttackerId = attackerId,
-            AttackerName = _entityNames.GetValueOrDefault(attackerId, $"Entity_{attackerId}"),
+            AttackerName = attackerName,
             TargetId = targetId,
-            TargetName = _entityNames.GetValueOrDefault(targetId, $"Entity_{targetId}"),
+            TargetName = targetName,
             SkillId = skillId,
             SkillName = GetSkillName(skillId),
             Damage = damage,

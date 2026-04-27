@@ -139,21 +139,32 @@ public class UpdateCheckerService
 
     private static string GetCurrentVersion()
     {
-        // csproj의 <Version> 태그값이 어셈블리 버전으로 들어감
-        return Assembly.GetExecutingAssembly()
-            .GetName().Version?.ToString(3) ?? "0.0.0";
+        // AssemblyInformationalVersion 우선 사용 (csproj <Version> 태그값)
+        // ToString(3) 대신 전체 버전 문자열 사용 → 1.0.1.1 같은 4자리도 정확히 비교
+        var assembly = Assembly.GetExecutingAssembly();
+        var infoVersion = assembly
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+
+        if (!string.IsNullOrEmpty(infoVersion))
+            return infoVersion.Split('+')[0]; // +build 메타데이터 제거
+
+        return assembly.GetName().Version?.ToString() ?? "0.0.0";
     }
 
-    /// <summary>
-    /// SemVer 비교. "1.2.0" > "1.1.5" → true
-    /// Version 클래스 사용: Major.Minor.Patch 비교를 직접 구현할 필요 없음
-    /// </summary>
     private static bool IsNewerVersion(string latest, string current)
     {
-        if (Version.TryParse(latest, out var l) &&
-            Version.TryParse(current, out var c))
-            return l > c;
-        return false;
+        // 4자리(1.0.1.1)와 3자리(1.0.1) 혼용 대응
+        // 3자리를 4자리로 맞춰서 비교: "1.0.1" → "1.0.1.0"
+        static Version Normalize(string v)
+        {
+            var parts = v.Split('.');
+            while (parts.Length < 4)
+                v += ".0";
+            return Version.TryParse(v, out var ver) ? ver : new Version(0, 0, 0, 0);
+        }
+
+        return Normalize(latest) > Normalize(current);
     }
 
     // GitHub API 응답 역직렬화용 레코드

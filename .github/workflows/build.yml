@@ -32,7 +32,7 @@ jobs:
     steps:
       # ── 1. 소스 체크아웃 ──────────────────────────────
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ── 2. .NET 8 SDK 설치 ────────────────────────────
       - name: Setup .NET
@@ -73,7 +73,6 @@ jobs:
             -c Release `
             -r win-x64 `
             --self-contained true `
-            -p:PublishSingleFile=true `
             -p:PublishReadyToRun=true `
             -o $publishDir
 
@@ -151,7 +150,6 @@ jobs:
           files: installer/Aion2Meter-Setup.exe
           draft: false
           prerelease: false
-          # 웹에서 미리 만든 Release가 있어도 덮어쓰기
-          overwrite: true
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

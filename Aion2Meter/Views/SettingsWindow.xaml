@@ -20,6 +20,9 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- 제목 -->
@@ -54,8 +57,65 @@
                         Foreground="{StaticResource AccentBrush}"/>
             </Grid>
 
-            <!-- 서버 IP -->
+            <!-- 창 너비 -->
             <Grid Grid.Row="3" Margin="0,0,0,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0">
+                    <TextBlock Text="창 너비"/>
+                    <TextBlock HorizontalAlignment="Right"
+                               Text="{Binding Settings.WindowWidth, StringFormat={}{0:F0}px}"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Grid>
+                <Slider Grid.Row="1" Margin="0,4,0,0"
+                        Minimum="240" Maximum="600"
+                        Value="{Binding Settings.WindowWidth}"
+                        TickFrequency="10" IsSnapToTickEnabled="True"
+                        Foreground="{StaticResource AccentBrush}"/>
+            </Grid>
+
+            <!-- 행 높이 -->
+            <Grid Grid.Row="4" Margin="0,0,0,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0">
+                    <TextBlock Text="행 높이"/>
+                    <TextBlock HorizontalAlignment="Right"
+                               Text="{Binding Settings.RowHeight, StringFormat={}{0:F0}px}"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Grid>
+                <Slider Grid.Row="1" Margin="0,4,0,0"
+                        Minimum="18" Maximum="40"
+                        Value="{Binding Settings.RowHeight}"
+                        TickFrequency="1" IsSnapToTickEnabled="True"
+                        Foreground="{StaticResource AccentBrush}"/>
+            </Grid>
+
+            <!-- 폰트 크기 배율 -->
+            <Grid Grid.Row="5" Margin="0,0,0,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0">
+                    <TextBlock Text="폰트 크기"/>
+                    <TextBlock HorizontalAlignment="Right"
+                               Text="{Binding Settings.FontScale, StringFormat={}{0:P0}}"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Grid>
+                <Slider Grid.Row="1" Margin="0,4,0,0"
+                        Minimum="0.8" Maximum="1.4"
+                        Value="{Binding Settings.FontScale}"
+                        TickFrequency="0.1" IsSnapToTickEnabled="True"
+                        Foreground="{StaticResource AccentBrush}"/>
+            </Grid>
+
+            <!-- 서버 IP -->
+            <Grid Grid.Row="6" Margin="0,0,0,10">
                 <Grid.RowDefinitions>
                     <RowDefinition/>
                     <RowDefinition/>
@@ -72,7 +132,7 @@
             </Grid>
 
             <!-- Npcap 상태 -->
-            <Border Grid.Row="4" Margin="0,0,0,16"
+            <Border Grid.Row="7" Margin="0,0,0,16"
                     Background="#0D1B3E" CornerRadius="4" Padding="8,6">
                 <Grid>
                     <TextBlock Text="Npcap 상태" FontSize="11"/>
@@ -83,7 +143,7 @@
             </Border>
 
             <!-- 버튼 -->
-            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+            <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="취소" Width="70" Height="28" Margin="0,0,8,0"
                         Style="{StaticResource IconButton}"
                         Click="CancelButton_Click"/>

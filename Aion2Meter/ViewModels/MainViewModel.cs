@@ -79,6 +79,12 @@ public class MainViewModel : BaseViewModel
 
     public AppSettings Settings => _settings.Settings;
 
+    // ── FontScale 기반 동적 폰트 크기 ─────────────────────
+    // FontScale을 바꾸면 아래 프로퍼티들이 일괄 변경됨
+    public double NameFontSize   => Math.Round(11 * Settings.FontScale, 1);
+    public double DamageFontSize => Math.Round(10 * Settings.FontScale, 1);
+    public double DpsFontSize    => Math.Round(11 * Settings.FontScale, 1);
+
     // ── 커맨드 ────────────────────────────────────────────────
 
     public RelayCommand ResetCommand { get; }
@@ -160,8 +166,10 @@ public class MainViewModel : BaseViewModel
     private void OnSaveSettings()
     {
         _settings.Save();
-        // 창 투명도 즉시 반영 (View에서 Settings.Opacity를 바인딩)
         OnPropertyChanged(nameof(Settings));
+        OnPropertyChanged(nameof(NameFontSize));
+        OnPropertyChanged(nameof(DamageFontSize));
+        OnPropertyChanged(nameof(DpsFontSize));
     }
 
     private void UpdateBossHp(uint bossId, string bossName, long current, long max)
