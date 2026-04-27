@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Reflection;
@@ -84,13 +85,15 @@ public class UpdateCheckerService
     public async Task<bool> DownloadAndInstallAsync(UpdateInfo update,
         IProgress<int>? progress = null)
     {
+        // ⑤ ArrayPool: 80KB 버퍼를 매번 new로 할당하지 않고 풀에서 대여
+        // 다운로드 완료 후 반드시 반납 (using 패턴으로 보장)
+        byte[]? buffer = null;
         try
         {
             string tempPath = Path.Combine(
                 Path.GetTempPath(),
                 $"Aion2Meter-Setup-{update.LatestVersion}.exe");
 
-            // 스트리밍 다운로드 (진행률 표시)
             using var response = await _http.GetAsync(
                 update.DownloadUrl,
                 HttpCompletionOption.ResponseHeadersRead);
@@ -101,11 +104,11 @@ public class UpdateCheckerService
             using var stream = await response.Content.ReadAsStreamAsync();
             using var file = File.Create(tempPath);
 
-            byte[] buffer = new byte[81920];
+            buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(81920);
             long downloaded = 0;
             int read;
 
-            while ((read = await stream.ReadAsync(buffer)) > 0)
+            while ((read = await stream.ReadAsync(buffer.AsMemory(0, 81920))) > 0)
             {
                 await file.WriteAsync(buffer.AsMemory(0, read));
                 downloaded += read;
@@ -113,7 +116,6 @@ public class UpdateCheckerService
                     progress?.Report((int)(downloaded * 100 / total));
             }
 
-            // 다운로드 완료 → 새 Setup.exe 실행 후 현재 앱 종료
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
                 FileName = tempPath,
@@ -126,6 +128,12 @@ public class UpdateCheckerService
         catch
         {
             return false;
+        }
+        finally
+        {
+            // ⑤ 예외 발생 시에도 반드시 풀에 반납
+            if (buffer != null)
+                System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 

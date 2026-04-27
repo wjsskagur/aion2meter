@@ -196,7 +196,8 @@ public class PacketParserService
 
     private void ParseBossHp(ArraySegment<byte> data)
     {
-        if (data.Count < 17) return;
+        // bossId(4) + currentHp(8) + maxHp(8) + nameLen(1) = 최소 21바이트
+        if (data.Count < 21) return;
         var arr = data.Array!;
         int off = data.Offset;
 
@@ -205,7 +206,9 @@ public class PacketParserService
         long maxHp = ReadInt64(arr, off + 12);
 
         byte nameLen = arr[off + 20];
-        string bossName = data.Count >= 21 + nameLen
+
+        // nameLen 만큼 추가 데이터가 있는지 확인
+        string bossName = (nameLen > 0 && data.Count >= 21 + nameLen)
             ? System.Text.Encoding.UTF8.GetString(arr, off + 21, nameLen)
             : _entityNames.GetValueOrDefault(bossId, $"Boss_{bossId}");
 
@@ -214,12 +217,18 @@ public class PacketParserService
     }
 
     // ── 스킬 이름 테이블 ──────────────────────────────────────────
-    // 실제 스킬 ID → 이름 매핑은 게임 클라이언트 데이터에서 추출 필요
     private static string GetSkillName(uint skillId) => skillId switch
     {
         0 => "일반 공격",
-        _ => $"Skill_{skillId}"  // 미등록 스킬은 ID 숫자로 표시
+        _ => $"Skill_{skillId}"
     };
+
+    /// <summary>
+    /// 엔티티 이름 캐시 초기화.
+    /// 던전 입장/리셋 시 호출하여 이전 세션의 엔티티 정보 제거.
+    /// ConcurrentDictionary는 Clear()가 스레드 안전함.
+    /// </summary>
+    public void ClearEntityCache() => _entityNames.Clear();
 
     // ── Little-Endian 바이트 읽기 헬퍼 ──────────────────────────
     // BitConverter 대신 직접 구현 이유: ArraySegment 오프셋 처리 편의성

@@ -6,21 +6,23 @@ using System.Windows.Media;
 namespace Aion2Meter.Converters;
 
 /// <summary>
-/// double(0.0~1.0)을 픽셀 너비로 변환.
-/// DPS 바 너비 = 전체 너비 * DamagePercent
-/// ConverterParameter로 최대 너비(컨트롤 ActualWidth)를 전달.
+/// double(0.0~1.0)과 최대 너비를 받아 픽셀 너비로 변환.
+/// MultiBinding으로 사용: {DamagePercent, ActualWidth} → 실제 픽셀 너비
+/// IMultiValueConverter를 사용하는 이유:
+///   ActualWidth는 런타임에 결정되므로 ConverterParameter(정적값)로 전달 불가.
+///   MultiBinding으로 두 값을 동시에 바인딩해야 정확한 너비 계산 가능.
 /// </summary>
-[ValueConversion(typeof(double), typeof(double))]
-public class PercentToWidthConverter : IValueConverter
+public class PercentToWidthConverter : IMultiValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
     {
-        double percent = (double)value;
-        double maxWidth = parameter is string s && double.TryParse(s, out var w) ? w : 300;
-        return Math.Max(2, percent * maxWidth); // 최소 2px (0%라도 보이게)
+        if (values.Length < 2) return 2.0;
+        double percent = values[0] is double p ? p : 0;
+        double maxWidth = values[1] is double w ? w : 300;
+        return Math.Max(2, percent * maxWidth);
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         => throw new NotImplementedException();
 }
 

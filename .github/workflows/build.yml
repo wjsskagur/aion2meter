@@ -10,6 +10,16 @@ jobs:
   build:
     runs-on: windows-latest  # Windows 필수 (WPF 빌드)
 
+    # main 브랜치 커밋에 달린 태그일 때만 실행
+    # 이유: on.push.tags 는 브랜치 필터를 지원하지 않아서
+    #       job 레벨 if 로 체크하는 것이 유일한 방법
+    # github.event.base_ref: 태그가 가리키는 커밋이 속한 브랜치
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       startsWith(github.ref, 'refs/tags/v') &&
+       github.event.base_ref == 'refs/heads/main')
+
     steps:
       # ── 1. 소스 체크아웃 ──────────────────────────────
       - name: Checkout

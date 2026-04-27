@@ -97,27 +97,35 @@ public class MainViewModel : BaseViewModel
         _capture = new PacketCaptureService(_parser);
         _tracker = new CombatTrackerService();
 
-        // 이벤트 연결
-        _capture.OnCombatEvent += (_, e) => _tracker.ProcessEvent(e);
-        _capture.OnEntityInfo += (_, e) => _tracker.UpdateEntityName(e.entityId, e.name);
-        _capture.OnError += (_, msg) => App.Current.Dispatcher.Invoke(() => StatusMessage = msg);
-        _parser.OnBossHp += (_, e) => UpdateBossHp(e.bossId, e.bossName, e.currentHp, e.maxHp);
+        // ⑥ 이벤트 핸들러를 명명된 메서드로 연결 → Cleanup에서 -= 로 정확히 해제 가능
+        //    람다로 연결하면 해제 불가 (다른 인스턴스로 인식됨)
+        _capture.OnCombatEvent += OnCombatEvent;
+        _capture.OnEntityInfo += OnEntityInfo;
+        _capture.OnError += OnCaptureError;
+        _parser.OnBossHp += OnBossHp;
+        _tracker.Players.CollectionChanged += OnPlayersChanged;
 
         ResetCommand = new RelayCommand(OnReset);
         ToggleCaptureCommand = new RelayCommand(OnToggleCapture);
         SaveSettingsCommand = new RelayCommand(OnSaveSettings);
 
-        // Players 변경 시 HasNoPlayers 알림
-        _tracker.Players.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoPlayers));
-
-        // 전투 타이머 (1초마다 갱신)
         _timerRefresh = new System.Timers.Timer(1000);
         _timerRefresh.Elapsed += (_, _) => RefreshTimer();
         _timerRefresh.Start();
 
-        // 자동 캡처 시작
         StartCapture();
     }
+
+    // ⑥ 명명된 이벤트 핸들러
+    private void OnCombatEvent(object? s, CombatEvent e) => _tracker.ProcessEvent(e);
+    private void OnEntityInfo(object? s, (uint entityId, string name) e) =>
+        _tracker.UpdateEntityName(e.entityId, e.name);
+    private void OnCaptureError(object? s, string msg) =>
+        App.Current.Dispatcher.Invoke(() => StatusMessage = msg);
+    private void OnBossHp(object? s, (uint bossId, string bossName, long currentHp, long maxHp) e) =>
+        UpdateBossHp(e.bossId, e.bossName, e.currentHp, e.maxHp);
+    private void OnPlayersChanged(object? s, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
+        OnPropertyChanged(nameof(HasNoPlayers));
 
     private void StartCapture()
     {
@@ -143,7 +151,11 @@ public class MainViewModel : BaseViewModel
         }
     }
 
-    private void OnReset() => _tracker.Reset();
+    private void OnReset()
+    {
+        _parser.ClearEntityCache();
+        _tracker.Reset();
+    }
 
     private void OnSaveSettings()
     {
@@ -168,9 +180,10 @@ public class MainViewModel : BaseViewModel
 
     private void RefreshTimer()
     {
-        if (_tracker.CurrentSession?.IsActive == true)
+        var session = _tracker.CurrentSession;
+        if (session?.IsActive == true)
         {
-            var elapsed = _tracker.CurrentSession.ElapsedSeconds;
+            var elapsed = session.ElapsedSeconds;
             int minutes = (int)(elapsed / 60);
             int seconds = (int)(elapsed % 60);
             App.Current.Dispatcher.Invoke(() =>
@@ -178,6 +191,11 @@ public class MainViewModel : BaseViewModel
                 CombatTimer = $"{minutes:D2}:{seconds:D2}";
                 IsInCombat = true;
             });
+        }
+        else
+        {
+            // 전투 종료 or 세션 없음 → 인디케이터 끄기
+            App.Current.Dispatcher.Invoke(() => IsInCombat = false);
         }
     }
 
@@ -187,9 +205,18 @@ public class MainViewModel : BaseViewModel
 
     public void Cleanup()
     {
+        // ⑥ 이벤트 핸들러 명시적 해제 → GC가 ViewModel을 수집할 수 있도록
+        _capture.OnCombatEvent -= OnCombatEvent;
+        _capture.OnEntityInfo -= OnEntityInfo;
+        _capture.OnError -= OnCaptureError;
+        _parser.OnBossHp -= OnBossHp;
+        _tracker.Players.CollectionChanged -= OnPlayersChanged;
+
         _timerRefresh?.Stop();
+        _timerRefresh?.Dispose();
         _capture.Stop();
         _capture.Dispose();
+        _tracker.Dispose();
         _settings.Save();
     }
 }

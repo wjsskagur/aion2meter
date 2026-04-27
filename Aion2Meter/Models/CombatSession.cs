@@ -34,6 +34,10 @@ public class CombatSession
     /// <summary>원시 이벤트 목록 (상세 분석용, 메모리 유의)</summary>
     public List<CombatEvent> Events { get; set; } = new();
 
-    /// <summary>전체 파티 총 피해량</summary>
-    public long TotalPartyDamage => Players.Values.Sum(p => p.TotalDamage);
+    /// <summary>
+    /// 전체 파티 총 피해량.
+    /// CombatTrackerService._totalPartyDamageCache 와 동기화됨.
+    /// History 저장 후 조회용으로만 사용 (실시간 계산 X).
+    /// </summary>
+    public long TotalPartyDamage { get; set; }
 }

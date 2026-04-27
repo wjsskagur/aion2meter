@@ -2,7 +2,6 @@ using SharpPcap;
 using SharpPcap.LibPcap;
 using PacketDotNet;
 using Aion2Meter.Models;
-using System.Net;
 
 namespace Aion2Meter.Services;
 
@@ -20,29 +19,30 @@ namespace Aion2Meter.Services;
 /// </summary>
 public class PacketCaptureService : IDisposable
 {
-    // 아이온2 서버 포트 (실제 포트로 교체 필요)
-    // TCP 55000번대가 일반적인 MMORPG 게임 포트
-    private const int AION2_PORT = 2106; // 패킷 분석 후 실제 포트로 수정
+    private const int AION2_PORT = 2106;
 
     private ILiveDevice? _device;
     private readonly PacketParserService _parser;
     private bool _isCapturing = false;
+    private bool _disposed = false;
 
-    /// <summary>파싱된 전투 이벤트 발생 시 구독자에게 전달</summary>
     public event EventHandler<CombatEvent>? OnCombatEvent;
-
-    /// <summary>새 엔티티 정보(캐릭터명) 수신 시</summary>
     public event EventHandler<(uint entityId, string name)>? OnEntityInfo;
-
-    /// <summary>캡처 에러 발생 시</summary>
     public event EventHandler<string>? OnError;
 
     public PacketCaptureService(PacketParserService parser)
     {
         _parser = parser;
-        _parser.OnCombatEvent += (s, e) => OnCombatEvent?.Invoke(this, e);
-        _parser.OnEntityInfo += (s, e) => OnEntityInfo?.Invoke(this, e);
+        // 명명된 핸들러로 연결 → Dispose 시 정확히 해제 가능
+        _parser.OnCombatEvent += ForwardCombatEvent;
+        _parser.OnEntityInfo += ForwardEntityInfo;
     }
+
+    // 포워딩 핸들러 — 람다 대신 명명된 메서드로 정의
+    private void ForwardCombatEvent(object? s, CombatEvent e) =>
+        OnCombatEvent?.Invoke(this, e);
+    private void ForwardEntityInfo(object? s, (uint entityId, string name) e) =>
+        OnEntityInfo?.Invoke(this, e);
 
     /// <summary>
     /// 사용 가능한 네트워크 인터페이스 목록 반환.
@@ -115,10 +115,11 @@ public class PacketCaptureService : IDisposable
         if (!_isCapturing) return;
         try
         {
+            _device?.OnPacketArrival -= OnPacketArrival; // 핸들러 해제 후 캡처 중단
             _device?.StopCapture();
             _device?.Close();
         }
-        catch { /* 종료 시 에러는 무시 */ }
+        catch { }
         finally
         {
             _isCapturing = false;
@@ -151,7 +152,17 @@ public class PacketCaptureService : IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
+        // 파서 이벤트 구독 해제 → PacketParserService가 이 객체를 참조하지 않도록
+        _parser.OnCombatEvent -= ForwardCombatEvent;
+        _parser.OnEntityInfo -= ForwardEntityInfo;
+
         Stop();
         _device?.Dispose();
+        _device = null;
+
+        GC.SuppressFinalize(this);
     }
 }

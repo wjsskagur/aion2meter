@@ -51,8 +51,9 @@ public static class NpcapHelper
             if (!File.Exists(installerPath))
             {
                 // 리소스에서 추출 (빌드 시 EmbeddedResource로 포함한 경우)
-                installerPath = ExtractInstallerFromResource();
-                if (installerPath == null) return false;
+                string? extracted = ExtractInstallerFromResource();
+                if (extracted == null) return false;
+                installerPath = extracted;
             }
 
             var psi = new ProcessStartInfo

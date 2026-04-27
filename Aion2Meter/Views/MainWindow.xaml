@@ -123,107 +123,90 @@
                 </Grid>
             </Border>
 
-            <!-- ══════════════ 플레이어 DPS 목록 ══════════════ -->
-            <ItemsControl Grid.Row="2"
-                          ItemsSource="{Binding Players}"
-                          Margin="0,4,0,4">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Grid Margin="6,1" x:Name="playerGrid">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="22"/>
-                                <RowDefinition Height="4"/>
-                            </Grid.RowDefinitions>
+            <!-- ══════════════ 플레이어 DPS 목록 / 대기 메시지 ══════════════ -->
+            <!-- Grid.Row=2 를 하나의 Grid로 묶어 두 요소 겹침 버그 수정 -->
+            <Grid Grid.Row="2">
 
-                            <!-- DPS 바 배경 -->
-                            <Rectangle Grid.Row="0" Fill="#0F1F3D" RadiusX="3" RadiusY="3"/>
+                <!-- 플레이어 있을 때: DPS 목록 -->
+                <ItemsControl ItemsSource="{Binding Players}"
+                              Margin="0,4,0,4"
+                              Visibility="{Binding HasNoPlayers, Converter={StaticResource BoolToVisibility}, ConverterParameter=Inverse}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="6,1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="22"/>
+                                    <RowDefinition Height="4"/>
+                                </Grid.RowDefinitions>
 
-                            <!-- DPS 바 (진행 바) -->
-                            <Rectangle Grid.Row="0"
-                                       HorizontalAlignment="Left"
-                                       RadiusX="3" RadiusY="3"
-                                       Opacity="0.6">
-                                <Rectangle.Width>
-                                    <MultiBinding Converter="{StaticResource PercentToWidth}">
-                                        <Binding Path="DamagePercent"/>
-                                        <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Grid}"/>
-                                    </MultiBinding>
-                                </Rectangle.Width>
-                                <Rectangle.Fill>
-                                    <SolidColorBrush Color="{Binding IsLocalPlayer,
-                                        Converter={StaticResource LocalPlayerBarColor}}"/>
-                                </Rectangle.Fill>
-                            </Rectangle>
+                                <!-- DPS 바 배경 -->
+                                <Rectangle Grid.Row="0" Fill="#0F1F3D" RadiusX="3" RadiusY="3"/>
 
-                            <!-- 플레이어 정보 텍스트 -->
-                            <Grid Grid.Row="0" Margin="6,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="70"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- 이름 -->
-                                <TextBlock Grid.Column="0"
-                                           Text="{Binding Name}"
-                                           FontSize="11" FontWeight="Medium"
-                                           VerticalAlignment="Center"
-                                           Foreground="{Binding IsLocalPlayer, Converter={StaticResource LocalPlayerColor}}"
-                                           TextTrimming="CharacterEllipsis"/>
-
-                                <!-- 피해량 -->
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding TotalDamage, Converter={StaticResource DamageFormat}}"
-                                           FontSize="10" VerticalAlignment="Center"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                           Margin="0,0,8,0"/>
-
-                                <!-- DPS -->
-                                <TextBlock Grid.Column="2"
-                                           FontSize="11" FontWeight="Bold"
-                                           VerticalAlignment="Center"
-                                           HorizontalAlignment="Right"
-                                           Foreground="White">
-                                    <Run Text="{Binding Dps, Converter={StaticResource DpsFormat}}"/>
-                                    <Run Text=" DPS" FontSize="9"
-                                         Foreground="{StaticResource TextSecondaryBrush}"/>
-                                </TextBlock>
-                            </Grid>
-
-                            <!-- 퍼센트 바 (하단 얇은 바) -->
-                            <Grid Grid.Row="1" Margin="0,1">
-                                <Rectangle Fill="#1A1A3A" RadiusX="2" RadiusY="2"/>
-                                <Rectangle HorizontalAlignment="Left"
-                                           RadiusX="2" RadiusY="2"
-                                           Fill="{StaticResource AccentBrush}"
-                                           Opacity="0.8">
+                                <!-- DPS 바 (진행 바) -->
+                                <Rectangle Grid.Row="0" HorizontalAlignment="Left"
+                                           RadiusX="3" RadiusY="3" Opacity="0.6">
                                     <Rectangle.Width>
                                         <MultiBinding Converter="{StaticResource PercentToWidth}">
                                             <Binding Path="DamagePercent"/>
                                             <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Grid}"/>
                                         </MultiBinding>
                                     </Rectangle.Width>
+                                    <Rectangle.Fill>
+                                        <SolidColorBrush Color="{Binding IsLocalPlayer, Converter={StaticResource LocalPlayerBarColor}}"/>
+                                    </Rectangle.Fill>
                                 </Rectangle>
-                                <!-- 퍼센트 텍스트 -->
-                                <TextBlock Text="{Binding DamagePercent, Converter={StaticResource PercentFormat}}"
-                                           FontSize="8" HorizontalAlignment="Right"
-                                           Foreground="{StaticResource TextSecondaryBrush}"
-                                           VerticalAlignment="Center"/>
-                            </Grid>
-                        </Grid>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
 
-            <!-- ══════════════ 대기 메시지 (플레이어 없을 때) ══════════════ -->
-            <Border Grid.Row="2"
-                    Padding="10,20"
-                    Visibility="{Binding HasNoPlayers, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Text="{Binding StatusMessage}"
-                           HorizontalAlignment="Center"
-                           FontSize="11"
-                           Foreground="{StaticResource TextSecondaryBrush}"/>
-            </Border>
+                                <!-- 플레이어 정보 텍스트 -->
+                                <Grid Grid.Row="0" Margin="6,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="70"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Name}"
+                                               FontSize="11" FontWeight="Medium" VerticalAlignment="Center"
+                                               Foreground="{Binding IsLocalPlayer, Converter={StaticResource LocalPlayerColor}}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding TotalDamage, Converter={StaticResource DamageFormat}}"
+                                               FontSize="10" VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Grid.Column="2" FontSize="11" FontWeight="Bold"
+                                               VerticalAlignment="Center" HorizontalAlignment="Right"
+                                               Foreground="White">
+                                        <Run Text="{Binding Dps, Converter={StaticResource DpsFormat}}"/>
+                                        <Run Text=" DPS" FontSize="9" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    </TextBlock>
+                                </Grid>
+
+                                <!-- 퍼센트 바 -->
+                                <Grid Grid.Row="1" Margin="0,1">
+                                    <Rectangle Fill="#1A1A3A" RadiusX="2" RadiusY="2"/>
+                                    <Rectangle HorizontalAlignment="Left" RadiusX="2" RadiusY="2"
+                                               Fill="{StaticResource AccentBrush}" Opacity="0.8">
+                                        <Rectangle.Width>
+                                            <MultiBinding Converter="{StaticResource PercentToWidth}">
+                                                <Binding Path="DamagePercent"/>
+                                                <Binding Path="ActualWidth" RelativeSource="{RelativeSource AncestorType=Grid}"/>
+                                            </MultiBinding>
+                                        </Rectangle.Width>
+                                    </Rectangle>
+                                    <TextBlock Text="{Binding DamagePercent, Converter={StaticResource PercentFormat}}"
+                                               FontSize="8" HorizontalAlignment="Right"
+                                               Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 플레이어 없을 때: 대기 메시지 -->
+                <Border Padding="10,20"
+                        Visibility="{Binding HasNoPlayers, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="{Binding StatusMessage}" HorizontalAlignment="Center"
+                               FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Border>
+            </Grid>
 
             <!-- ══════════════ 푸터 (상태바) ══════════════ -->
             <Border Grid.Row="3"
