@@ -70,12 +70,7 @@ Section "MainSection" SEC01
 
     ${If} $1 != 0
       ; 종료 코드가 0이 아니면 실패
-      MessageBox MB_OK|MB_ICONEXCLAMATION         "Npcap 설치에 실패했습니다. (종료 코드: $1)$
-$
-수동으로 설치해주세요:$
-https://npcap.com$
-$
-반드시 'Install Npcap in WinPcap API-compatible Mode'를 체크하세요."
+      MessageBox MB_OK|MB_ICONEXCLAMATION "Npcap 설치에 실패했습니다. (종료 코드: $1)$\n$\n수동으로 설치해주세요: https://npcap.com$\n$\n반드시 WinPcap API-compatible Mode 를 체크하세요."
     ${Else}
       DetailPrint "Npcap 설치 완료"
     ${EndIf}
