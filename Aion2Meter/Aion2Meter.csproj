@@ -12,11 +12,10 @@
     <!-- C# 12 명시: .NET 8 기본값이지만 wpftmp 프로젝트에서 버전 불일치 방지 -->
     <LangVersion>12</LangVersion>
 
-    <!-- 단일 exe 배포 설정 -->
-    <!-- PublishSingleFile: 모든 dll을 exe 하나로 묶음 -->
-    <!-- SelfContained: .NET Runtime을 exe에 포함 → 사용자 PC에 .NET 설치 불필요 -->
-    <!-- ReadyToRun: AOT 부분 컴파일로 초기 실행 속도 향상 -->
-    <PublishSingleFile>true</PublishSingleFile>
+    <!-- 배포 설정 -->
+    <!-- PublishSingleFile 비활성화: SharpPcap 네이티브 DLL(wpcap.dll 등)이 -->
+    <!-- 단일 exe 번들에서 제대로 추출되지 않아 런타임 로드 실패 발생 -->
+    <!-- 대신 폴더 전체를 NSIS로 묶어서 배포 -->
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PublishReadyToRun>true</PublishReadyToRun>

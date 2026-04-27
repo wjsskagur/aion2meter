@@ -1,16 +1,15 @@
 ; ============================================================
 ; Aion2 Meter - NSIS 인스톨러 스크립트
-; makensis /DVERSION=1.0.0 /DOUTPUT_DIR=publish Aion2Meter.nsi
 ; ============================================================
 
 Unicode true
 
-!define APP_NAME     "Aion2 Meter"
-!define APP_EXE      "Aion2Meter.exe"
-!define PUBLISHER    "Aion2Meter"
-!define REG_KEY      "Software\Microsoft\Windows\CurrentVersion\Uninstall\Aion2Meter"
+!define APP_NAME       "Aion2 Meter"
+!define APP_EXE        "Aion2Meter.exe"
+!define PUBLISHER      "Aion2Meter"
+!define INSTALL_SUBDIR "Aion2Meter"
+!define REG_KEY        "Software\Microsoft\Windows\CurrentVersion\Uninstall\Aion2Meter"
 
-; GitHub Actions에서 /D 옵션으로 주입
 !ifndef VERSION
   !define VERSION "1.0.0"
 !endif
@@ -20,17 +19,23 @@ Unicode true
 
 Name "${APP_NAME} ${VERSION}"
 OutFile "Aion2Meter-Setup.exe"
-InstallDir "$PROGRAMFILES64\Aion2Meter"
+
+; 기본 설치 경로를 고정 서브디렉토리로 강제
+; 사용자가 상위 폴더(Program Files 등)를 직접 선택 못하도록
+InstallDir "$PROGRAMFILES64\${INSTALL_SUBDIR}"
 InstallDirRegKey HKLM "${REG_KEY}" "InstallLocation"
 
-; 관리자 권한 필수 (Npcap 설치 + Program Files 쓰기)
 RequestExecutionLevel admin
 
-; 모던 UI
 !include "MUI2.nsh"
+!include "LogicLib.nsh"
+
 !define MUI_ABORTWARNING
 !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
+
+; 설치 경로 페이지에서 기본값 설명 추가
+!define MUI_DIRECTORYPAGE_TEXT_TOP "설치 경로를 선택하세요. 기본 경로 사용을 권장합니다."
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -47,16 +52,14 @@ Section "MainSection" SEC01
 
   SetOutPath "$INSTDIR"
 
-  ; Aion2Meter.exe 복사
-  File "${OUTPUT_DIR}\${APP_EXE}"
+  ; publish 폴더 전체 복사 (SharpPcap 네이티브 DLL 포함)
+  File /r "${OUTPUT_DIR}\*.*"
 
   ; ── Npcap 설치 (미설치 시에만) ──────────────────────
-  ; 레지스트리로 설치 여부 확인
   ReadRegStr $0 HKLM "SOFTWARE\Npcap" ""
   ${If} $0 == ""
     DetailPrint "Npcap 설치 중..."
     File "npcap-installer.exe"
-    ; /winpcap_mode: SharpPcap 필수 조건
     ExecWait '"$INSTDIR\npcap-installer.exe" /winpcap_mode' $1
     ${If} $1 != 0
       MessageBox MB_OK|MB_ICONEXCLAMATION \
@@ -67,16 +70,11 @@ Section "MainSection" SEC01
     DetailPrint "Npcap 이미 설치됨, 건너뜀"
   ${EndIf}
 
-  ; ── 바로가기 생성 ────────────────────────────────────
-  ; 관리자 권한으로 실행되도록 ShellLink에 RunAsAdmin 플래그 설정
+  ; ── 바로가기 생성 (관리자 권한 플래그 포함) ──────────
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" \
-    "$INSTDIR\${APP_EXE}"
-  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" \
-    "$INSTDIR\${APP_EXE}"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
+  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
 
-  ; 바로가기에 관리자 권한 플래그 설정
-  ; (일반 CreateShortcut으로는 안 됨 - ShellLink 직접 조작)
   nsExec::ExecToLog 'powershell -Command \
     "$s=(New-Object -COM WScript.Shell).CreateShortcut(\"$DESKTOP\${APP_NAME}.lnk\"); \
     $s.Save(); \
@@ -84,7 +82,7 @@ Section "MainSection" SEC01
     $bytes[0x15]=$bytes[0x15] -bor 0x20; \
     [System.IO.File]::WriteAllBytes(\"$DESKTOP\${APP_NAME}.lnk\",$bytes)"'
 
-  ; ── 레지스트리 등록 (프로그램 추가/제거에 표시) ──────
+  ; ── 레지스트리 등록 ──────────────────────────────────
   WriteRegStr HKLM "${REG_KEY}" "DisplayName"     "${APP_NAME}"
   WriteRegStr HKLM "${REG_KEY}" "DisplayVersion"  "${VERSION}"
   WriteRegStr HKLM "${REG_KEY}" "Publisher"       "${PUBLISHER}"
@@ -93,7 +91,6 @@ Section "MainSection" SEC01
   WriteRegDWORD HKLM "${REG_KEY}" "NoModify" 1
   WriteRegDWORD HKLM "${REG_KEY}" "NoRepair" 1
 
-  ; 언인스톨러 생성
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
 SectionEnd
@@ -101,10 +98,35 @@ SectionEnd
 ; ── 언인스톨 섹션 ─────────────────────────────────────────
 Section "Uninstall"
 
+  ; ── 안전 검증 1: $INSTDIR 가 비어있지 않은지 ──────────
+  ${If} $INSTDIR == ""
+    MessageBox MB_OK|MB_ICONSTOP "설치 경로를 확인할 수 없습니다. 수동으로 삭제해주세요."
+    Abort
+  ${EndIf}
+
+  ; ── 안전 검증 2: 반드시 있어야 할 파일 존재 확인 ──────
+  ; Aion2Meter.exe 없으면 잘못된 경로 → 개별 파일만 삭제
+  ${IfNot} ${FileExists} "$INSTDIR\${APP_EXE}"
+    MessageBox MB_OK|MB_ICONEXCLAMATION \
+      "$INSTDIR 에서 ${APP_EXE}를 찾을 수 없습니다.$\n수동으로 삭제해주세요: $INSTDIR"
+    Abort
+  ${EndIf}
+
+  ; ── 검증 통과 → 앱이 설치한 파일만 명시적 삭제 ────────
+  ; RMDir /r 대신 확장자별 명시 삭제로 안전성 확보
+  ; 사용자가 직접 넣은 파일은 건드리지 않음
   Delete "$INSTDIR\${APP_EXE}"
   Delete "$INSTDIR\Uninstall.exe"
+  Delete "$INSTDIR\*.dll"
+  Delete "$INSTDIR\*.json"
+  Delete "$INSTDIR\*.pdb"
+  Delete "$INSTDIR\*.so"
+
+  ; 폴더가 비어있으면 삭제, 비어있지 않으면 그냥 둠
+  ; (사용자 파일이 남아있을 수 있으므로 /r 사용 안 함)
   RMDir "$INSTDIR"
 
+  ; 바로가기 삭제
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
   RMDir "$SMPROGRAMS\${APP_NAME}"
