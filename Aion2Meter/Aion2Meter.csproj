@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Windows WPF 앱으로 지정. net8.0-windows 는 WPF/WinForms 전용 TFM -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Aion2Meter</RootNamespace>
+    <AssemblyName>Aion2Meter</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- 단일 exe 배포 설정 -->
+    <!-- PublishSingleFile: 모든 dll을 exe 하나로 묶음 -->
+    <!-- SelfContained: .NET Runtime을 exe에 포함 → 사용자 PC에 .NET 설치 불필요 -->
+    <!-- ReadyToRun: AOT 부분 컴파일로 초기 실행 속도 향상 -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishReadyToRun>true</PublishReadyToRun>
+
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SharpPcap: .NET용 Npcap/WinPcap 래퍼. 패킷 캡처의 사실상 표준 라이브러리 -->
+    <PackageReference Include="SharpPcap" Version="6.3.0" />
+    <!-- PacketDotNet: SharpPcap과 함께 쓰는 패킷 파싱 라이브러리 (Ethernet/IP/TCP 레이어 파싱) -->
+    <PackageReference Include="PacketDotNet" Version="1.4.7" />
+    <!-- Newtonsoft.Json: 설정 저장/로드용 -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>

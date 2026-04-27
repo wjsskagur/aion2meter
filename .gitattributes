@@ -1,0 +1,35 @@
+# ── 기본값: 텍스트 파일은 LF로 통일 ──────────────────────
+# autocrlf 설정이 개발자마다 달라도 레포는 항상 LF로 저장됨
+* text=auto eol=lf
+
+# ── Windows 전용 파일: CRLF 강제 ──────────────────────────
+# .bat은 CRLF가 아니면 cmd.exe에서 깨짐 (앞서 겪은 문제)
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# ── C# 소스 ───────────────────────────────────────────────
+*.cs    text eol=lf
+*.xaml  text eol=lf
+*.csproj text eol=lf
+*.sln   text eol=lf
+
+# ── NSIS ──────────────────────────────────────────────────
+*.nsi   text eol=lf
+*.nsh   text eol=lf
+
+# ── GitHub Actions ────────────────────────────────────────
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# ── 문서 ──────────────────────────────────────────────────
+*.md    text eol=lf
+*.txt   text eol=lf
+
+# ── 바이너리: diff/merge 하지 않음 ───────────────────────
+*.exe   binary
+*.dll   binary
+*.png   binary
+*.jpg   binary
+*.ico   binary
+*.zip   binary

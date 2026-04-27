@@ -1,0 +1,38 @@
+# ── Build 결과물 ──────────────────────────────────────────
+bin/
+obj/
+publish/
+
+# ── Visual Studio ─────────────────────────────────────────
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ── Rider ─────────────────────────────────────────────────
+.idea/
+*.sln.iml
+
+# ── dotnet ────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ── NSIS 빌드 결과물 ──────────────────────────────────────
+installer/Aion2Meter-Setup.exe
+installer/npcap-installer.exe   # 라이선스 문제로 레포에 포함하지 않음
+
+# ── 앱 설정 (로컬 저장 파일) ──────────────────────────────
+*.json
+!appsettings*.json              # appsettings는 예외 (프로젝트 설정)
+
+# ── OS ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── 로그 ──────────────────────────────────────────────────
+*.log

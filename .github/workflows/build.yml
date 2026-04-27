@@ -1,0 +1,114 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'          # v1.0.0 형태의 태그 push 시 실행
+  workflow_dispatch:  # GitHub 웹에서 수동 실행 버튼
+
+jobs:
+  build:
+    runs-on: windows-latest  # Windows 필수 (WPF 빌드)
+
+    steps:
+      # ── 1. 소스 체크아웃 ──────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. .NET 8 SDK 설치 ────────────────────────────
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # ── 3. 태그에서 버전 번호 추출 ────────────────────
+      # 태그가 v1.2.3 이면 VERSION=1.2.3 으로 저장
+      # workflow_dispatch(수동실행)면 0.0.0-dev 로 설정
+      - name: Extract version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="0.0.0-dev"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      # ── 4. csproj 버전 자동 업데이트 ──────────────────
+      # 태그 버전과 exe 버전을 일치시키기 위해
+      - name: Update version in csproj
+        shell: bash
+        run: |
+          sed -i "s|<Version>.*</Version>|<Version>${{ steps.version.outputs.VERSION }}</Version>|" \
+            Aion2Meter/Aion2Meter.csproj
+
+      # ── 5. dotnet publish → 단일 exe ──────────────────
+      - name: Publish
+        run: |
+          dotnet publish Aion2Meter/Aion2Meter.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:PublishReadyToRun=true `
+            -o publish/
+        shell: pwsh
+
+      # ── 6. NSIS 설치 ──────────────────────────────────
+      # NSIS는 Windows Runner에 기본 설치 안 되어 있음
+      - name: Install NSIS
+        run: choco install nsis -y
+        shell: pwsh
+
+      # ── 7. Npcap 설치 파일 다운로드 ───────────────────
+      # 인스톨러에 번들링하기 위해 빌드 시 다운로드
+      # 라이선스상 재배포 가능 여부 확인 후 사용
+      - name: Download Npcap installer
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            -Uri "https://npcap.com/dist/npcap-1.80.exe" `
+            -OutFile "installer/npcap-installer.exe"
+
+      # ── 8. NSIS로 Setup.exe 빌드 ──────────────────────
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+          & "C:\Program Files (x86)\NSIS\makensis.exe" `
+            /DVERSION=$version `
+            /DOUTPUT_DIR=publish `
+            installer/Aion2Meter.nsi
+
+      # ── 9. GitHub Releases에 업로드 ───────────────────
+      # 태그 push 시에만 실제 Release 생성
+      # workflow_dispatch 시에는 Artifacts로만 저장
+      - name: Upload artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aion2Meter-Setup-${{ steps.version.outputs.VERSION }}
+          path: installer/Aion2Meter-Setup.exe
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Aion2 Meter ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## Aion2 Meter ${{ steps.version.outputs.VERSION }}
+
+            ### 설치 방법
+            1. `Aion2Meter-Setup.exe` 다운로드
+            2. 실행 (Npcap 자동 설치 포함)
+            3. 바탕화면 바로가기로 실행
+
+            ### 변경사항
+            ${{ github.event.head_commit.message }}
+          files: installer/Aion2Meter-Setup.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

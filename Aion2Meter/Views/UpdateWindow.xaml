@@ -1,0 +1,117 @@
+<Window x:Class="Aion2Meter.Views.UpdateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="업데이트" Width="360" SizeToContent="Height"
+        Background="Transparent"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+
+    <Border Background="{StaticResource BackgroundBrush}"
+            CornerRadius="8"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 제목 -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                <TextBlock Text="🎉 " FontSize="18"/>
+                <TextBlock Text="새 버전이 있습니다!"
+                           FontSize="14" FontWeight="Bold"
+                           Foreground="{StaticResource AccentBrush}"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- 버전 정보 -->
+            <Border Grid.Row="1" Background="#0D1B3E" CornerRadius="4" Padding="12,8" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                        <TextBlock Text="현재 버전" FontSize="10"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="CurrentVersionText" FontSize="13"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="→" FontSize="16"
+                               Foreground="{StaticResource AccentBrush}"
+                               VerticalAlignment="Center" Margin="12,0"/>
+                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                        <TextBlock Text="최신 버전" FontSize="10"
+                                   Foreground="#4CAF50"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="LatestVersionText" FontSize="13"
+                                   Foreground="#4CAF50" FontWeight="Bold"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 변경사항 -->
+            <Border Grid.Row="2" Background="#0D1B3E" CornerRadius="4"
+                    Padding="12,8" Margin="0,0,0,16"
+                    MaxHeight="120">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <TextBlock x:Name="ReleaseNotesText"
+                               FontSize="11" TextWrapping="Wrap"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </ScrollViewer>
+            </Border>
+
+            <!-- 다운로드 진행률 -->
+            <Grid Grid.Row="3" Margin="0,0,0,16"
+                  x:Name="ProgressPanel" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0">
+                    <TextBlock Text="다운로드 중..." FontSize="11"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <TextBlock x:Name="ProgressText" HorizontalAlignment="Right"
+                               FontSize="11" Foreground="{StaticResource AccentBrush}"/>
+                </Grid>
+                <ProgressBar Grid.Row="1" x:Name="ProgressBar"
+                             Height="4" Margin="0,4,0,0"
+                             Minimum="0" Maximum="100"
+                             Foreground="{StaticResource AccentBrush}"
+                             Background="#1A1A3A"/>
+            </Grid>
+
+            <!-- 버튼 -->
+            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="LaterButton" Content="나중에" Width="80" Height="30"
+                        Margin="0,0,8,0" Style="{StaticResource IconButton}"
+                        Click="LaterButton_Click"/>
+                <Button x:Name="UpdateButton"
+                        Width="120" Height="30"
+                        Background="{StaticResource AccentBrush}"
+                        Foreground="White" BorderThickness="0"
+                        Cursor="Hand" Click="UpdateButton_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <Button.Content>
+                        <TextBlock Text="지금 업데이트" FontSize="12"/>
+                    </Button.Content>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
