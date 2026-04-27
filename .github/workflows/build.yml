@@ -8,7 +8,12 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest  # Windows 필수 (WPF 빌드)
+    runs-on: windows-latest
+
+    # Release 생성/수정 권한 명시
+    # 기본 GITHUB_TOKEN은 read-only라 Release 업데이트 시 403 발생
+    permissions:
+      contents: write
 
     # main 브랜치 커밋에 달린 태그일 때만 실행
     # 이유: on.push.tags 는 브랜치 필터를 지원하지 않아서
@@ -146,5 +151,7 @@ jobs:
           files: installer/Aion2Meter-Setup.exe
           draft: false
           prerelease: false
+          # 웹에서 미리 만든 Release가 있어도 덮어쓰기
+          overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
