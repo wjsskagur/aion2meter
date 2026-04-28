@@ -22,11 +22,27 @@ Console.WriteLine($"[Capture] pipe={pipeName} port={port} serverIp={serverIp ?? 
 // ── 테스트 모드: 파서 포함 패킷 분석 ────────────────────────────────
 if (testMode)
 {
+    // 로그 파일 경로: 실행 폴더의 capture_log_날짜시간.txt
+    string logPath = Path.Combine(
+        AppContext.BaseDirectory,
+        $"capture_log_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+    var logWriter = new StreamWriter(logPath, append: false, encoding: Encoding.UTF8) { AutoFlush = true };
+
+    void Log(string msg)
+    {
+        string line = $"[{DateTime.Now:HH:mm:ss.fff}] {msg}";
+        Console.WriteLine(line);
+        logWriter.WriteLine(line);
+    }
+
+    Log($"=== 캡처 시작 port={port} ===");
+    Log($"로그 파일: {logPath}");
+
     var testParser = new PacketParserService();
     testParser.OnDamageEvent += dmg =>
-        Console.WriteLine($"[DAMAGE] {System.Text.Json.JsonSerializer.Serialize(dmg)}");
+        Log($"[DAMAGE] {System.Text.Json.JsonSerializer.Serialize(dmg)}");
     testParser.OnEntityInfoEvent += info =>
-        Console.WriteLine($"[ENTITY] id={info.entityId} name={info.name} local={info.isLocalPlayer}");
+        Log($"[ENTITY] id={info.entityId} name={info.name} local={info.isLocalPlayer}");
 
     var testDevices = new List<ILiveDevice>();
     foreach (var dev in CaptureDeviceList.Instance)
@@ -49,9 +65,9 @@ if (testMode)
                         if (d.Length >= 4)
                         {
                             ushort op = (ushort)(d[2] | (d[3] << 8));
-                            Console.WriteLine($"[PKT] src={tcp.SourcePort} dst={tcp.DestinationPort} " +
+                            Log($"[PKT] src={tcp.SourcePort} dst={tcp.DestinationPort} " +
                                 $"op=0x{op:X4} len={d.Length} " +
-                                $"hex={BitConverter.ToString(d, 0, Math.Min(16, d.Length))}");
+                                $"hex={BitConverter.ToString(d, 0, Math.Min(32, d.Length))}");
                         }
                         long seqNum = (long)tcp.SequenceNumber & 0xFFFFFFFFL;
                         testParser.FeedPacket(seqNum, d);
@@ -61,13 +77,15 @@ if (testMode)
             };
             dev.StartCapture();
             testDevices.Add(dev);
-            Console.WriteLine($"[Capture] Listening on {dev.Name}");
+            Log($"[Capture] Listening on {dev.Name}");
         }
-        catch (Exception ex) { Console.WriteLine($"[SKIP] {ex.Message}"); }
+        catch (Exception ex) { Log($"[SKIP] {ex.Message}"); }
     }
 
     Console.WriteLine("Press Enter to stop...");
     Console.ReadLine();
+    Log("=== 캡처 종료 ===");
+    logWriter.Close();
     foreach (var dev in testDevices) { try { dev.StopCapture(); dev.Close(); dev.Dispose(); } catch { } }
     return 0;
 }

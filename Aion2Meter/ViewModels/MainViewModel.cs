@@ -172,6 +172,11 @@ public class MainViewModel : BaseViewModel
     {
         WriteLog("StartCapture - begin");
         StatusMessage = "캡처 초기화 중...";
+
+        // 필터 설정 적용
+        _tracker.FilterByBossTarget   = _settings.Settings.FilterByBossTarget;
+        _tracker.FilterByKnownPlayers = _settings.Settings.FilterByKnownPlayers;
+
         WriteLog("StartCapture - calling _capture.Start");
         _capture.Start(_settings.Settings.AionPort, _settings.Settings.ServerIp);
         WriteLog("StartCapture - _capture.Start returned");

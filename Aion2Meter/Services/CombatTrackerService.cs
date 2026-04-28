@@ -25,6 +25,12 @@ public class CombatTrackerService : IDisposable
 
     public uint LocalPlayerId { get; set; }
 
+    /// <summary>보스 타겟 기준 필터 (모든 공격자의 보스 딜 표시)</summary>
+    public bool FilterByBossTarget { get; set; } = false;
+
+    /// <summary>파티원(이름 확인된 플레이어) 기준 필터</summary>
+    public bool FilterByKnownPlayers { get; set; } = true;
+
     public ObservableCollection<PlayerStats> Players { get; } = new();
     public ObservableCollection<CombatSession> History { get; } = new();
 
@@ -55,6 +61,7 @@ public class CombatTrackerService : IDisposable
         {
             if (_currentSession == null || !_currentSession.IsActive)
             {
+                // 새 세션 시작 - 첫 데미지의 타겟이 보스
                 _currentSession = new CombatSession
                 {
                     BossId    = evt.TargetId,
@@ -65,6 +72,16 @@ public class CombatTrackerService : IDisposable
             }
 
             var session = _currentSession!;
+
+            // ── 필터링 ──────────────────────────────────────────────
+            // 1. 보스 타겟 기준: 현재 보스 이외 타겟은 무시
+            if (evt.TargetId != session.BossId) return;
+
+            // 2. 파티원 기준: 이름이 확인된 플레이어(닉네임 패킷 수신)만 표시
+            //    FilterByKnownPlayers=true이고 FilterByBossTarget=false이면 파티원만
+            //    둘 다 true이면 보스 타겟 + 파티원 교집합
+            //    FilterByBossTarget=true, FilterByKnownPlayers=false이면 보스 타겟 전체
+            if (FilterByKnownPlayers && !_nameCache.ContainsKey(evt.AttackerId)) return;
 
             if (session.Events.Count >= 5000)
                 session.Events.RemoveAt(0);
