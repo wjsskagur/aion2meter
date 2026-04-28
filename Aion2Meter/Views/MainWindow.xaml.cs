@@ -13,16 +13,15 @@ public partial class MainWindow : Window
         Loaded += OnWindowLoaded;
     }
 
-    private async void OnWindowLoaded(object sender, RoutedEventArgs e)
+    private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnWindowLoaded;
 
         _vm = new MainViewModel();
         DataContext = _vm;
 
-        // StartCaptureAsync 전체를 백그라운드에서 실행
-        // pipe.ConnectAsync(타임아웃)가 UI 스레드를 점유하지 않도록
-        _ = Task.Run(async () => await _vm.StartCaptureAsync());
+        // 완전히 동기 - 내부에서 Task.Run으로 백그라운드 처리
+        _vm.StartCapture();
     }
 
     private void Header_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)

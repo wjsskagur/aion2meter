@@ -153,24 +153,14 @@ public class MainViewModel : BaseViewModel
     /// 캡처 시작. MainWindow.Loaded 이후에만 호출.
     /// CaptureProcessService가 별도 프로세스를 띄우므로 UI 블로킹 없음.
     /// </summary>
-    public async Task StartCaptureAsync()
+    public void StartCapture()
     {
         App.Current?.Dispatcher.BeginInvoke(() => StatusMessage = "캡처 초기화 중...");
-
-        bool ok = await _capture.StartAsync(
-            _settings.Settings.AionPort,
-            _settings.Settings.ServerIp);
-
-        App.Current?.Dispatcher.BeginInvoke(() =>
-        {
-            IsCapturing = ok;
-            StatusMessage = ok
-                ? "캡처 중..."
-                : "캡처 시작 실패 - Npcap WinPcap 호환 모드 확인";
-        });
+        _capture.Start(_settings.Settings.AionPort, _settings.Settings.ServerIp);
+        App.Current?.Dispatcher.BeginInvoke(() => IsCapturing = true);
     }
 
-    private async void OnToggleCapture()
+    private void OnToggleCapture()
     {
         if (IsCapturing)
         {
@@ -180,7 +170,7 @@ public class MainViewModel : BaseViewModel
         }
         else
         {
-            await StartCaptureAsync();
+            StartCapture();
         }
     }
 

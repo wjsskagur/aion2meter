@@ -7,12 +7,8 @@ using Aion2Meter.Models;
 namespace Aion2Meter.Services;
 
 /// <summary>
-/// UI가 Named Pipe 서버, 캡처 프로세스가 클라이언트로 접속.
-/// 
-/// 파이프 방향 변경 이유:
-/// 기존: 캡처 프로세스가 서버 → UI가 ConnectAsync로 대기 → 블로킹 발생
-/// 변경: UI가 서버로 먼저 열고 WaitForConnectionAsync 백그라운드 대기
-///       → UI는 블로킹 없이 즉시 반환, 캡처 프로세스가 나중에 접속
+/// 캡처 프로세스를 실행하고 Named Pipe로 이벤트를 수신.
+/// StartAsync는 즉시 반환 - 연결 대기는 완전히 백그라운드에서 처리.
 /// </summary>
 public class CaptureProcessService : IDisposable
 {
@@ -29,108 +25,105 @@ public class CaptureProcessService : IDisposable
 
     public bool IsRunning => _captureProcess is { HasExited: false };
 
-    public async Task<bool> StartAsync(int port = 2106, string? serverIp = null)
+    /// <summary>
+    /// 즉시 반환. 캡처 프로세스 실행 및 파이프 연결은 백그라운드에서 처리.
+    /// </summary>
+    public void Start(int port = 2106, string? serverIp = null)
     {
-        if (_disposed) return false;
+        if (_disposed) return;
         StopInternal();
+
+        string captureExe = Path.Combine(AppContext.BaseDirectory, "Aion2Meter.Capture.exe");
+        if (!File.Exists(captureExe))
+        {
+            OnError?.Invoke(this, $"Aion2Meter.Capture.exe 없음\n경로: {captureExe}");
+            return;
+        }
+
+        string pipeName = $"Aion2Meter_{Guid.NewGuid():N}";
+        _cts = new CancellationTokenSource();
+
+        // 모든 작업을 백그라운드로 완전히 넘김 - UI 스레드 터치 없음
+        _ = Task.Run(() => RunCaptureAsync(captureExe, pipeName, port, serverIp, _cts.Token));
+    }
+
+    private async Task RunCaptureAsync(
+        string captureExe, string pipeName, int port, string? serverIp, CancellationToken ct)
+    {
+        NamedPipeServerStream? pipe = null;
+        Process? process = null;
 
         try
         {
-            string captureExe = Path.Combine(AppContext.BaseDirectory, "Aion2Meter.Capture.exe");
-            if (!File.Exists(captureExe))
-            {
-                OnError?.Invoke(this, $"Aion2Meter.Capture.exe 없음\n경로: {captureExe}");
-                return false;
-            }
+            // 파이프 서버 오픈
+            pipe = new NamedPipeServerStream(
+                pipeName, PipeDirection.In, 1,
+                PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
 
-            string pipeName = $"Aion2Meter_{Guid.NewGuid():N}";
-
-            // UI가 서버로 먼저 파이프를 엽니다
-            _pipeServer = new NamedPipeServerStream(
-                pipeName,
-                PipeDirection.In,
-                maxNumberOfServerInstances: 1,
-                PipeTransmissionMode.Byte,
-                PipeOptions.Asynchronous);
-
-            // 캡처 프로세스 실행 (파이프명을 인자로 전달)
+            // 캡처 프로세스 실행
             string args = serverIp != null
                 ? $"\"{pipeName}\" {port} {serverIp}"
                 : $"\"{pipeName}\" {port}";
 
-            _captureProcess = new Process
+            process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = captureExe,
+                    FileName  = captureExe,
                     Arguments = args,
                     UseShellExecute = false,
-                    CreateNoWindow = true
+                    CreateNoWindow  = true
                 },
                 EnableRaisingEvents = true
             };
-            _captureProcess.Exited += OnCaptureProcessExited;
 
-            if (!_captureProcess.Start())
+            if (!process.Start())
             {
-                OnError?.Invoke(this, "캡처 프로세스 실행 실패");
-                StopInternal();
-                return false;
+                NotifyError("캡처 프로세스 실행 실패");
+                return;
             }
 
-            // 캡처 프로세스 접속 대기 (타임아웃 15초, 백그라운드)
-            _cts = new CancellationTokenSource();
-            using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            _captureProcess = process;
+            _pipeServer = pipe;
+
+            // 캡처 프로세스 접속 대기 (타임아웃 15초)
+            using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            connectCts.CancelAfter(TimeSpan.FromSeconds(15));
 
             try
             {
-                await _pipeServer.WaitForConnectionAsync(connectCts.Token);
+                await pipe.WaitForConnectionAsync(connectCts.Token);
             }
             catch (OperationCanceledException)
             {
-                OnError?.Invoke(this, "캡처 프로세스 접속 타임아웃\nNpcap WinPcap 호환 모드 확인 필요");
-                StopInternal();
-                return false;
+                if (!ct.IsCancellationRequested)
+                    NotifyError("캡처 프로세스 접속 타임아웃 - Npcap WinPcap 호환 모드 확인");
+                return;
             }
 
-            // 파이프 읽기 시작
-            _ = ReadPipeAsync(_cts.Token);
-            return true;
+            NotifyStatus("캡처 연결됨");
+
+            // 파이프 읽기 루프
+            await ReadPipeAsync(pipe, ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!_disposed)
         {
-            OnError?.Invoke(this, $"캡처 시작 오류: {ex.GetType().Name}\n{ex.Message}");
-            StopInternal();
-            return false;
+            NotifyError($"캡처 오류: {ex.Message}");
+        }
+        finally
+        {
+            // process가 _captureProcess와 다를 수 있으므로 둘 다 정리
+            try { if (process != null && !process.HasExited) process.Kill(true); } catch { }
+            process?.Dispose();
+            pipe?.Dispose();
         }
     }
 
-    public void Stop() => StopInternal();
-
-    private void StopInternal()
-    {
-        _cts?.Cancel();
-        _cts?.Dispose();
-        _cts = null;
-
-        if (_captureProcess != null)
-        {
-            try { if (!_captureProcess.HasExited) _captureProcess.Kill(entireProcessTree: true); }
-            catch { }
-            _captureProcess.Exited -= OnCaptureProcessExited;
-            _captureProcess.Dispose();
-            _captureProcess = null;
-        }
-
-        _pipeServer?.Dispose();
-        _pipeServer = null;
-    }
-
-    private async Task ReadPipeAsync(CancellationToken ct)
+    private async Task ReadPipeAsync(NamedPipeServerStream pipe, CancellationToken ct)
     {
         try
         {
-            using var reader = new StreamReader(_pipeServer!);
+            using var reader = new System.IO.StreamReader(pipe);
             while (!ct.IsCancellationRequested)
             {
                 string? line = await reader.ReadLineAsync(ct);
@@ -142,7 +135,7 @@ public class CaptureProcessService : IDisposable
         catch (OperationCanceledException) { }
         catch (Exception ex) when (!_disposed)
         {
-            OnError?.Invoke(this, $"파이프 읽기 오류: {ex.Message}");
+            NotifyError($"파이프 읽기 오류: {ex.Message}");
         }
     }
 
@@ -152,9 +145,9 @@ public class CaptureProcessService : IDisposable
         {
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-            if (!root.TryGetProperty("type", out var typeProp)) return;
+            if (!root.TryGetProperty("type", out var t)) return;
 
-            switch (typeProp.GetString())
+            switch (t.GetString())
             {
                 case "damage":
                     OnCombatEvent?.Invoke(this, new CombatEvent
@@ -170,13 +163,11 @@ public class CaptureProcessService : IDisposable
                         Timestamp    = DateTime.Now
                     });
                     break;
-
                 case "entity":
                     OnEntityInfo?.Invoke(this, (
                         root.GetProperty("entityId").GetUInt32(),
                         root.GetProperty("name").GetString() ?? ""));
                     break;
-
                 case "bossHp":
                     OnBossHp?.Invoke(this, (
                         root.GetProperty("bossId").GetUInt32(),
@@ -184,26 +175,38 @@ public class CaptureProcessService : IDisposable
                         root.GetProperty("currentHp").GetInt64(),
                         root.GetProperty("maxHp").GetInt64()));
                     break;
-
                 case "status":
-                    OnStatus?.Invoke(this, root.GetProperty("message").GetString() ?? "");
+                    NotifyStatus(root.GetProperty("message").GetString() ?? "");
                     break;
-
                 case "error":
-                    OnError?.Invoke(this, root.GetProperty("message").GetString() ?? "");
+                    NotifyError(root.GetProperty("message").GetString() ?? "");
                     break;
             }
         }
         catch { }
     }
 
-    private void OnCaptureProcessExited(object? sender, EventArgs e)
+    // UI 스레드 없이 이벤트만 발행 (호출자가 Dispatcher 처리)
+    private void NotifyError(string msg)  => OnError?.Invoke(this, msg);
+    private void NotifyStatus(string msg) => OnStatus?.Invoke(this, msg);
+
+    public void Stop() => StopInternal();
+
+    private void StopInternal()
     {
-        if (_disposed) return;
-        int code = -1;
-        try { code = _captureProcess?.ExitCode ?? -1; } catch { }
-        if (code != 0)
-            OnError?.Invoke(this, $"캡처 프로세스 비정상 종료 (코드: {code})");
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+
+        if (_captureProcess != null)
+        {
+            try { if (!_captureProcess.HasExited) _captureProcess.Kill(true); } catch { }
+            _captureProcess.Dispose();
+            _captureProcess = null;
+        }
+
+        _pipeServer?.Dispose();
+        _pipeServer = null;
     }
 
     public void Dispose()
