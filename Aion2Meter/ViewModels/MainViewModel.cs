@@ -132,8 +132,12 @@ public class MainViewModel : BaseViewModel
     private void OnCaptureError(object? s, string msg) =>
         App.Current?.Dispatcher.BeginInvoke(() =>
         {
-            StatusMessage = msg;
+            StatusMessage = msg.Split('\n')[0]; // 첫 줄만 상태바에
             IsCapturing = false;
+            // 상세 오류는 MessageBox로 표시
+            System.Windows.MessageBox.Show(msg, "캡처 오류",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
         });
 
     private void OnCaptureStatus(object? s, string msg) =>

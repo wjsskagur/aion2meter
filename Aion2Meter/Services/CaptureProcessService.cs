@@ -29,7 +29,6 @@ public class CaptureProcessService : IDisposable
     {
         if (_disposed) return false;
 
-        // 이전 인스턴스 정리 후 재시작 가능하도록
         StopInternal();
 
         try
@@ -37,7 +36,7 @@ public class CaptureProcessService : IDisposable
             string captureExe = Path.Combine(AppContext.BaseDirectory, "Aion2Meter.Capture.exe");
             if (!File.Exists(captureExe))
             {
-                OnError?.Invoke(this, $"캡처 프로세스를 찾을 수 없습니다.\n경로: {captureExe}");
+                OnError?.Invoke(this, $"Aion2Meter.Capture.exe 없음\n경로: {captureExe}");
                 return false;
             }
 
@@ -46,7 +45,6 @@ public class CaptureProcessService : IDisposable
                 ? $"\"{pipeName}\" {port} {serverIp}"
                 : $"\"{pipeName}\" {port}";
 
-            // 파이프 클라이언트를 먼저 생성 (프로세스 실행 전)
             _pipe = new NamedPipeClientStream(".", pipeName, PipeDirection.In, PipeOptions.Asynchronous);
 
             _captureProcess = new Process
@@ -58,7 +56,7 @@ public class CaptureProcessService : IDisposable
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardError = true,
-                    RedirectStandardOutput = false
+                    RedirectStandardOutput = true
                 },
                 EnableRaisingEvents = true
             };
@@ -70,7 +68,18 @@ public class CaptureProcessService : IDisposable
                 return false;
             }
 
-            // 파이프 연결 대기 (타임아웃 10초)
+            // 프로세스가 파이프 서버를 열 시간을 줌 (2초)
+            await Task.Delay(2000);
+
+            // 프로세스가 이미 죽었는지 확인
+            if (_captureProcess.HasExited)
+            {
+                string stderr = await _captureProcess.StandardError.ReadToEndAsync();
+                OnError?.Invoke(this, $"캡처 프로세스 즉시 종료\n{stderr}");
+                return false;
+            }
+
+            // 파이프 연결 (타임아웃 10초)
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             try
             {
@@ -78,7 +87,7 @@ public class CaptureProcessService : IDisposable
             }
             catch (OperationCanceledException)
             {
-                OnError?.Invoke(this, "캡처 프로세스 연결 타임아웃 (Npcap 확인 필요)");
+                OnError?.Invoke(this, "캡처 프로세스 파이프 연결 타임아웃\nNpcap WinPcap 호환 모드 재설치 필요");
                 StopInternal();
                 return false;
             }
@@ -90,7 +99,7 @@ public class CaptureProcessService : IDisposable
         }
         catch (Exception ex)
         {
-            OnError?.Invoke(this, $"캡처 시작 오류: {ex.Message}");
+            OnError?.Invoke(this, $"캡처 시작 오류: {ex.GetType().Name}\n{ex.Message}");
             StopInternal();
             return false;
         }

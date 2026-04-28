@@ -96,7 +96,8 @@ try
     }
 
     device = devices[0];
-    device.Open(DeviceModes.None, readTimeout: 1000);
+    // SharpPcap 6.x: Open(DeviceModes, int) - 두 번째 파라미터가 read timeout(ms)
+    device.Open(DeviceModes.None, 1000);
 
     string filter = serverIp != null
         ? $"tcp and host {serverIp} and port {port}"
@@ -106,27 +107,17 @@ try
     Console.WriteLine($"[Capture] Listening on '{device.Name}' filter='{filter}'");
     await SendAsync(new { type = "status", message = "캡처 중..." });
 
-    device.OnPacketArrival += async (sender, e) =>
-    {
-        try
-        {
-            var raw    = e.GetPacket();
-            var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
-            var tcp    = packet.Extract<TcpPacket>();
-
-            // 서버 → 클라이언트 방향 패킷만 처리
-            if (tcp?.PayloadData is { Length: > 0 } payload && tcp.SourcePort == port)
-                await parser.ParsePacketAsync(payload);
-        }
-        catch { }
-    };
-
+    // async 람다 대신 명명된 핸들러 사용
+    // 이유: async void 이벤트 핸들러에서 e 타입 추론 실패 방지
+    //       + 예외가 이벤트 루프 밖으로 전파되지 않도록 격리
+    device.OnPacketArrival += OnPacketArrival;
     device.StartCapture();
 
-    // UI가 파이프를 닫을 때까지 대기
+    // UI 프로세스가 파이프를 닫을 때까지 대기
     while (pipeServer.IsConnected)
         await Task.Delay(500);
 
+    device.OnPacketArrival -= OnPacketArrival;
     device.StopCapture();
 }
 catch (Exception ex)
@@ -143,3 +134,20 @@ finally
 
 Console.WriteLine("[Capture] Exiting normally.");
 return 0;
+
+// ── 로컬 함수: 패킷 수신 핸들러 ─────────────────────────────
+// async void: 이벤트 핸들러는 반환값이 없으므로 async void 사용
+// 내부 예외는 catch로 격리 → 캡처 루프 중단 방지
+async void OnPacketArrival(object? sender, SharpPcap.PacketCapture e)
+{
+    try
+    {
+        var raw    = e.GetPacket();
+        var packet = PacketDotNet.Packet.ParsePacket(raw.LinkLayerType, raw.Data);
+        var tcp    = packet.Extract<PacketDotNet.TcpPacket>();
+
+        if (tcp?.PayloadData is { Length: > 0 } payload && tcp.SourcePort == port)
+            await parser.ParsePacketAsync(payload);
+    }
+    catch { }
+}
