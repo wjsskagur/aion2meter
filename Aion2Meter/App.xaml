@@ -1,8 +1,7 @@
 <Application x:Class="Aion2Meter.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:converters="clr-namespace:Aion2Meter.Converters"
-             StartupUri="Views/MainWindow.xaml">
+             xmlns:converters="clr-namespace:Aion2Meter.Converters">
 
     <Application.Resources>
         <ResourceDictionary>

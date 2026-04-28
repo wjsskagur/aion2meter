@@ -18,15 +18,18 @@ public partial class App : Application
         base.OnStartup(e);
 
         // ── 전역 예외 핸들러 등록 ──────────────────────────
-        // UI 스레드 미처리 예외
+        // StartupUri 대신 직접 창 생성: 예외 핸들러가 먼저 등록된 후 창을 열어야
+        // InitializeComponent() 내 XAML 파싱 오류도 핸들러에서 잡힘
         DispatcherUnhandledException += OnDispatcherUnhandledException;
-        // 백그라운드 스레드 미처리 예외
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-        // async Task 미처리 예외
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
         try
         {
+            // 메인 창 직접 생성 및 표시 (StartupUri 대체)
+            var mainWindow = new Views.MainWindow();
+            mainWindow.Show();
+
             // ── Npcap 확인 ──────────────────────────────────────
             if (!NpcapHelper.IsNpcapInstalled())
             {
