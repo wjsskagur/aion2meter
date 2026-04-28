@@ -1,7 +1,6 @@
 <Window x:Class="Aion2Meter.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="clr-namespace:Aion2Meter.ViewModels"
         Title="Aion2 Meter"
         Width="320" MinWidth="240" MaxWidth="600"
         SizeToContent="Height"
@@ -11,29 +10,19 @@
         WindowStartupLocation="Manual"
         Closing="Window_Closing">
 
-    <!-- 창 이동: 헤더 드래그로 이동 -->
-    <Window.Resources>
-        <!-- 플레이어 행 스타일 -->
-        <Style x:Key="PlayerRow" TargetType="Grid">
-            <Setter Property="Margin" Value="0,1"/>
-        </Style>
-    </Window.Resources>
-
-    <!-- 전체 외곽 테두리 (둥근 모서리 + 반투명 배경) -->
     <Border Background="{StaticResource BackgroundBrush}"
             CornerRadius="8"
             BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1">
-
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>  <!-- 헤더 -->
-                <RowDefinition Height="Auto"/>  <!-- 보스 정보 -->
-                <RowDefinition Height="Auto"/>  <!-- 플레이어 목록 -->
-                <RowDefinition Height="Auto"/>  <!-- 푸터 -->
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- ══════════════ 헤더 ══════════════ -->
+            <!-- 헤더 -->
             <Border Grid.Row="0"
                     Background="{StaticResource PanelBrush}"
                     CornerRadius="8,8,0,0"
@@ -43,13 +32,10 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-
-                    <!-- 타이틀 + 상태 -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="⚔ AION2 METER"
                                    FontSize="12" FontWeight="Bold"
                                    Foreground="{StaticResource AccentBrush}"/>
-                        <!-- 전투 중 인디케이터 -->
                         <Ellipse Width="7" Height="7" Margin="8,0,0,0" VerticalAlignment="Center">
                             <Ellipse.Style>
                                 <Style TargetType="Ellipse">
@@ -66,8 +52,6 @@
                                    FontSize="11" Margin="6,0,0,0"
                                    Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
-
-                    <!-- 버튼들 -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <Button Content="↺" ToolTip="리셋"
                                 Style="{StaticResource IconButton}"
@@ -85,18 +69,13 @@
                 </Grid>
             </Border>
 
-            <!-- ══════════════ 보스 정보 ══════════════ -->
+            <!-- 보스 정보 -->
             <Border Grid.Row="1"
                     Background="#0D1B3E"
                     Padding="10,6"
                     Visibility="{Binding IsInCombat, Converter={StaticResource BoolToVisibility}}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <!-- 보스 이름 + HP 텍스트 -->
-                    <Grid Grid.Row="0">
+                <StackPanel>
+                    <Grid>
                         <TextBlock Text="{Binding BossName}"
                                    FontSize="11" FontWeight="SemiBold"
                                    Foreground="#FFD700"/>
@@ -104,8 +83,7 @@
                                    FontSize="10" HorizontalAlignment="Right"
                                    Foreground="{StaticResource TextSecondaryBrush}"/>
                     </Grid>
-                    <!-- HP 바 -->
-                    <Grid Grid.Row="1" Margin="0,3,0,0" Height="4">
+                    <Grid Height="4" Margin="0,3,0,0">
                         <Rectangle Fill="#2A2A4A" RadiusX="2" RadiusY="2"/>
                         <Rectangle Fill="#E94560" RadiusX="2" RadiusY="2"
                                    HorizontalAlignment="Left">
@@ -117,29 +95,25 @@
                             </Rectangle.Width>
                         </Rectangle>
                     </Grid>
-                </Grid>
+                </StackPanel>
             </Border>
 
-            <!-- ══════════════ 플레이어 DPS 목록 / 대기 메시지 ══════════════ -->
-            <!-- Grid.Row=2 를 하나의 Grid로 묶어 두 요소 겹침 버그 수정 -->
+            <!-- 플레이어 목록 / 대기 메시지 -->
             <Grid Grid.Row="2">
-
-                <!-- 플레이어 있을 때: DPS 목록 -->
                 <ItemsControl ItemsSource="{Binding Players}"
                               Margin="0,4,0,4"
                               Visibility="{Binding HasNoPlayers, Converter={StaticResource BoolToVisibility}, ConverterParameter=Inverse}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
+                            <!-- RowDefinition Height 고정값 - 바인딩 제거 (SizeToContent 충돌 방지) -->
                             <Grid Margin="6,1">
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="{Binding DataContext.Settings.RowHeight, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                    <RowDefinition Height="22"/>
                                     <RowDefinition Height="4"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- DPS 바 배경 -->
                                 <Rectangle Grid.Row="0" Fill="#0F1F3D" RadiusX="3" RadiusY="3"/>
 
-                                <!-- DPS 바 (진행 바) -->
                                 <Rectangle Grid.Row="0" HorizontalAlignment="Left"
                                            RadiusX="3" RadiusY="3" Opacity="0.6">
                                     <Rectangle.Width>
@@ -153,7 +127,6 @@
                                     </Rectangle.Fill>
                                 </Rectangle>
 
-                                <!-- 플레이어 정보 텍스트 -->
                                 <Grid Grid.Row="0" Margin="6,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -161,30 +134,32 @@
                                         <ColumnDefinition Width="70"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="{Binding Name}"
-                                               FontSize="{Binding DataContext.NameFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
-                                               FontWeight="Medium" VerticalAlignment="Center"
+                                               FontSize="11" FontWeight="Medium"
+                                               VerticalAlignment="Center"
                                                Foreground="{Binding IsLocalPlayer, Converter={StaticResource LocalPlayerColor}}"
                                                TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Grid.Column="1"
                                                Text="{Binding TotalDamage, Converter={StaticResource DamageFormat}}"
-                                               FontSize="{Binding DataContext.DamageFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
-                                               VerticalAlignment="Center"
-                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,8,0"/>
+                                               FontSize="10" VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Margin="0,0,8,0"/>
                                     <TextBlock Grid.Column="2"
-                                               FontSize="{Binding DataContext.DpsFontSize, RelativeSource={RelativeSource AncestorType=Window}}"
-                                               FontWeight="Bold"
-                                               VerticalAlignment="Center" HorizontalAlignment="Right"
+                                               FontSize="11" FontWeight="Bold"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right"
                                                Foreground="White">
                                         <Run Text="{Binding Dps, Converter={StaticResource DpsFormat}}"/>
-                                        <Run Text=" DPS" FontSize="9" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        <Run Text=" DPS" FontSize="9"
+                                             Foreground="{StaticResource TextSecondaryBrush}"/>
                                     </TextBlock>
                                 </Grid>
 
-                                <!-- 퍼센트 바 -->
                                 <Grid Grid.Row="1" Margin="0,1">
                                     <Rectangle Fill="#1A1A3A" RadiusX="2" RadiusY="2"/>
-                                    <Rectangle HorizontalAlignment="Left" RadiusX="2" RadiusY="2"
-                                               Fill="{StaticResource AccentBrush}" Opacity="0.8">
+                                    <Rectangle HorizontalAlignment="Left"
+                                               RadiusX="2" RadiusY="2"
+                                               Fill="{StaticResource AccentBrush}"
+                                               Opacity="0.8">
                                         <Rectangle.Width>
                                             <MultiBinding Converter="{StaticResource PercentToWidth}">
                                                 <Binding Path="DamagePercent"/>
@@ -194,22 +169,24 @@
                                     </Rectangle>
                                     <TextBlock Text="{Binding DamagePercent, Converter={StaticResource PercentFormat}}"
                                                FontSize="8" HorizontalAlignment="Right"
-                                               Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center"/>
                                 </Grid>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- 플레이어 없을 때: 대기 메시지 -->
                 <Border Padding="10,20"
                         Visibility="{Binding HasNoPlayers, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Text="{Binding StatusMessage}" HorizontalAlignment="Center"
-                               FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <TextBlock Text="{Binding StatusMessage}"
+                               HorizontalAlignment="Center"
+                               FontSize="11"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
                 </Border>
             </Grid>
 
-            <!-- ══════════════ 푸터 (상태바) ══════════════ -->
+            <!-- 푸터 -->
             <Border Grid.Row="3"
                     Background="{StaticResource PanelBrush}"
                     CornerRadius="0,0,8,8"
@@ -222,7 +199,7 @@
                                FontSize="9"
                                Foreground="{StaticResource TextSecondaryBrush}">
                         <Run Text="v1.0  "/>
-                        <Run Text="{Binding IsCapturing, StringFormat={}{0}}"
+                        <Run Text="{Binding IsCapturing}"
                              Foreground="{StaticResource AccentBrush}"/>
                     </TextBlock>
                 </Grid>

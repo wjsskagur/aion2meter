@@ -50,6 +50,15 @@ public partial class MainWindow : Window
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
+    public void ApplySettings()
+    {
+        if (_vm == null) return;
+        var s = _vm.Settings;
+        Width   = s.WindowWidth;
+        Opacity = s.Opacity;
+        Topmost = s.AlwaysOnTop;
+    }
+
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
         if (_vm == null) return;

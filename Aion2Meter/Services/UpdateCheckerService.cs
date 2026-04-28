@@ -122,7 +122,7 @@ public class UpdateCheckerService
                 UseShellExecute = true
             });
 
-            App.Current.Dispatcher.Invoke(() => App.Current.Shutdown());
+            App.Current.Dispatcher.BeginInvoke(() => App.Current.Shutdown());
             return true;
         }
         catch
