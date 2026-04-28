@@ -1,4 +1,5 @@
 using Aion2Meter.ViewModels;
+using SharpPcap;
 using System.Windows;
 
 namespace Aion2Meter.Views;
@@ -21,12 +22,49 @@ public partial class MainWindow : Window
     {
         Loaded -= OnWindowLoaded;
 
-        // 창이 완전히 렌더링될 시간을 줌 (UI 스레드 양보)
         await Task.Yield();
 
-        // ViewModel은 UI 스레드에서 생성 (Dispatcher 접근 안전)
         _vm = new MainViewModel();
         DataContext = _vm;
+
+        await Task.Delay(500);
+
+        // SharpPcap(wpcap.dll) 로드 가능 여부 먼저 확인
+        // Npcap 미설치 시 DllNotFoundException → 앱이 즉시 종료되는 것 방지
+        if (!CheckNpcapAvailable()) return;
+
+        _vm.StartCapture();
+    }
+
+    private bool CheckNpcapAvailable()
+    {
+        try
+        {
+            // SharpPcap.LibPcap의 네이티브 DLL 로드 테스트
+            // 실제 캡처 없이 버전 정보만 읽어서 DLL 존재 확인
+            var version = SharpPcap.Pcap.LibpcapVersion;
+            return true;
+        }
+        catch (Exception ex) when (
+            ex is DllNotFoundException ||
+            ex is BadImageFormatException ||
+            ex is TypeInitializationException)
+        {
+            System.Windows.MessageBox.Show(
+                "Npcap이 설치되지 않았거나 올바르지 않습니다.\n\n" +
+                "https://npcap.com 에서 Npcap을 설치해주세요.\n\n" +
+                "⚠ 설치 시 'Install Npcap in WinPcap API-compatible Mode' 반드시 체크",
+                "Npcap 필요",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+
+            if (_vm != null)
+            {
+                _vm.StatusMessage = "Npcap 미설치 - 캡처 불가";
+                _vm.IsCapturing = false;
+            }
+            return false;
+        }
     }
 
     private void Header_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)

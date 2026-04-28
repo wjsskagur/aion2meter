@@ -26,11 +26,10 @@ public partial class App : Application
 
         try
         {
-            // 메인 창 직접 생성 및 표시 (StartupUri 대체)
-            var mainWindow = new Views.MainWindow();
-            mainWindow.Show();
-
-            // ── Npcap 확인 ──────────────────────────────────────
+            // ── Npcap 확인 (MainWindow 생성 전에 먼저 체크) ────────
+            // SharpPcap DLL은 MainWindow → MainViewModel → PacketCaptureService
+            // 로드 순서로 참조됨. Npcap 없으면 DLL 로드 실패로 앱이 즉시 종료.
+            // 창 뜨기 전에 체크해서 사용자에게 안내.
             if (!NpcapHelper.IsNpcapInstalled())
             {
                 var result = MessageBox.Show(
@@ -53,7 +52,11 @@ public partial class App : Application
                 }
             }
 
-            // ── 업데이트 체크 (백그라운드, 앱 시작 블로킹 안 함) ──
+            // ── 메인 창 생성 ─────────────────────────────────────
+            var mainWindow = new Views.MainWindow();
+            mainWindow.Show();
+
+            // ── 업데이트 체크 (백그라운드) ────────────────────────
             _ = CheckUpdateAsync();
         }
         catch (Exception ex)

@@ -119,7 +119,9 @@ public class MainViewModel : BaseViewModel
         _timerRefresh.Elapsed += (_, _) => RefreshTimer();
         _timerRefresh.Start();
 
-        StartCapture();
+        // StartCapture는 생성자에서 호출하지 않음
+        // → MainWindow.Loaded 이후 명시적으로 호출
+        StatusMessage = "시작 대기 중...";
     }
 
     // ⑥ 명명된 이벤트 핸들러
@@ -133,13 +135,16 @@ public class MainViewModel : BaseViewModel
     private void OnPlayersChanged(object? s, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
         OnPropertyChanged(nameof(HasNoPlayers));
 
-    private void StartCapture()
+    /// <summary>
+    /// 패킷 캡처 시작. MainWindow.Loaded 이후 호출.
+    /// SharpPcap은 내부적으로 STA(Single Thread Apartment) 스레드 필요할 수 있음.
+    /// 전용 스레드를 생성해서 완전히 격리.
+    /// </summary>
+    public void StartCapture()
     {
         StatusMessage = "캡처 초기화 중...";
 
-        // Task.Run: Npcap 드라이버 초기화를 스레드풀에서 실행
-        // ConfigureAwait(false): Dispatcher 컨텍스트로 돌아오지 않음 → 데드락 방지
-        Task.Run(() =>
+        var thread = new System.Threading.Thread(() =>
         {
             try
             {
@@ -147,7 +152,6 @@ public class MainViewModel : BaseViewModel
                     _settings.Settings.NetworkInterface,
                     _settings.Settings.ServerIp);
 
-                // UI 업데이트만 Dispatcher로
                 App.Current?.Dispatcher.BeginInvoke(() =>
                 {
                     IsCapturing = ok;
@@ -163,6 +167,11 @@ public class MainViewModel : BaseViewModel
                 });
             }
         });
+
+        // STA 설정: COM/WMI 컴포넌트 호환
+        thread.SetApartmentState(System.Threading.ApartmentState.STA);
+        thread.IsBackground = true; // 앱 종료 시 자동 종료
+        thread.Start();
     }
 
     private void OnToggleCapture()
