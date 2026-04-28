@@ -16,41 +16,21 @@ public partial class MainWindow : Window
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
         Loaded -= OnWindowLoaded;
-        WriteCrashLog("OnWindowLoaded", null);
-        Dispatcher.InvokeAsync(InitStep1, System.Windows.Threading.DispatcherPriority.Background);
-    }
 
-    private void InitStep1()
-    {
-        WriteCrashLog("InitStep1 - Creating MainViewModel", null);
         _vm = new MainViewModel();
-        WriteCrashLog("InitStep1 - Skipping DataContext for test", null);
-        // DataContext = _vm;  // 테스트: 바인딩 없이 확인
-        WriteCrashLog("InitStep1 - Done", null);
-        Dispatcher.InvokeAsync(InitStep2, System.Windows.Threading.DispatcherPriority.Background);
-    }
+        DataContext = _vm;
 
-    private void InitStep2()
-    {
-        WriteCrashLog("InitStep2 - StartCapture", null);
-        // 테스트: 캡처 시작 없이 UI만 확인
-        // _vm?.StartCapture();
-        WriteCrashLog("InitStep2 - Done (capture disabled for test)", null);
-    }
+        // 설정값 코드로 적용 (바인딩 대신)
+        // WindowStyle=None + AllowsTransparency=True 에서
+        // Left/Top/Width/Opacity 바인딩은 WPF 레이아웃 무한루프 유발
+        var s = _vm.Settings;
+        Left    = s.WindowLeft;
+        Top     = s.WindowTop;
+        Width   = s.WindowWidth;
+        Opacity = s.Opacity;
+        Topmost = s.AlwaysOnTop;
 
-    private static void WriteCrashLog(string step, Exception? ex)
-    {
-        try
-        {
-            string logPath = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Aion2Meter", "init.log");
-            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(logPath)!);
-            System.IO.File.AppendAllText(logPath,
-                $"[{DateTime.Now:HH:mm:ss.fff}] {step}" +
-                (ex != null ? $"\n  {ex.GetType().Name}: {ex.Message}" : "") + "\n");
-        }
-        catch { }
+        _vm.StartCapture();
     }
 
     private void Header_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -64,7 +44,7 @@ public partial class MainWindow : Window
         if (_vm != null)
         {
             _vm.Settings.WindowLeft = Left;
-            _vm.Settings.WindowTop = Top;
+            _vm.Settings.WindowTop  = Top;
         }
     }
 
@@ -79,6 +59,12 @@ public partial class MainWindow : Window
 
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
+        if (_vm != null)
+        {
+            _vm.Settings.WindowLeft  = Left;
+            _vm.Settings.WindowTop   = Top;
+            _vm.Settings.WindowWidth = Width;
+        }
         _vm?.Cleanup();
     }
 }

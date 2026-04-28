@@ -3,16 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:Aion2Meter.ViewModels"
         Title="Aion2 Meter"
-        Width="{Binding Settings.WindowWidth, Mode=TwoWay}"
-        MinWidth="240" MaxWidth="600"
+        Width="320" MinWidth="240" MaxWidth="600"
         SizeToContent="Height"
         Background="Transparent"
         WindowStyle="None"
         AllowsTransparency="True"
-        Topmost="{Binding Settings.AlwaysOnTop}"
-        Opacity="{Binding Settings.Opacity}"
-        Left="{Binding Settings.WindowLeft, Mode=TwoWay}"
-        Top="{Binding Settings.WindowTop, Mode=TwoWay}"
+        WindowStartupLocation="Manual"
         Closing="Window_Closing">
 
     <!-- 창 이동: 헤더 드래그로 이동 -->

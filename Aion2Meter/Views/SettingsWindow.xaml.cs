@@ -26,6 +26,7 @@ public partial class SettingsWindow : Window
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         _vm.SaveSettingsCommand.Execute(null);
+        (Owner as Views.MainWindow)?.ApplySettings();
         DialogResult = true;
         Close();
     }
