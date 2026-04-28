@@ -68,12 +68,6 @@
                 </Setter>
             </Style>
 
-            <!-- ── 텍스트 공통 스타일 ── -->
-            <Style TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="{StaticResource GameFont}"/>
-                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            </Style>
-
         </ResourceDictionary>
     </Application.Resources>
 
