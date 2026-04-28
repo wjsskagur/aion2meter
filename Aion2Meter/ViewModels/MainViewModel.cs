@@ -151,15 +151,19 @@ public class MainViewModel : BaseViewModel
     /// </summary>
     public async Task StartCaptureAsync()
     {
-        StatusMessage = "캡처 초기화 중...";
+        App.Current?.Dispatcher.BeginInvoke(() => StatusMessage = "캡처 초기화 중...");
 
         bool ok = await _capture.StartAsync(
             _settings.Settings.AionPort,
             _settings.Settings.ServerIp);
 
-        IsCapturing = ok;
-        if (!ok)
-            StatusMessage = "캡처 시작 실패 - Npcap WinPcap 호환 모드 확인";
+        App.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            IsCapturing = ok;
+            StatusMessage = ok
+                ? "캡처 중..."
+                : "캡처 시작 실패 - Npcap WinPcap 호환 모드 확인";
+        });
     }
 
     private async void OnToggleCapture()

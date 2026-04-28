@@ -17,14 +17,12 @@ public partial class MainWindow : Window
     {
         Loaded -= OnWindowLoaded;
 
-        await Task.Yield();
-
         _vm = new MainViewModel();
         DataContext = _vm;
 
-        // 창 렌더링 완전히 끝난 후 캡처 시작
-        await Task.Delay(500);
-        await _vm.StartCaptureAsync();
+        // StartCaptureAsync 전체를 백그라운드에서 실행
+        // pipe.ConnectAsync(타임아웃)가 UI 스레드를 점유하지 않도록
+        _ = Task.Run(async () => await _vm.StartCaptureAsync());
     }
 
     private void Header_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
