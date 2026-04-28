@@ -77,7 +77,7 @@ public partial class App : Application
             var update = await updater.CheckForUpdateAsync();
             if (update == null) return;
 
-            Current.Dispatcher.BeginInvoke(() =>
+            _ = Current.Dispatcher.BeginInvoke(() =>
             {
                 var window = new UpdateWindow(updater, update);
                 window.Show();

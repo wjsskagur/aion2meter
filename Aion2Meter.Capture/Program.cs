@@ -53,7 +53,19 @@ using var writer = new StreamWriter(pipeServer, Encoding.UTF8, leaveOpen: true)
     AutoFlush = true
 };
 
-// JSON 전송 헬퍼
+// JSON 전송 헬퍼 (동기 버전 - Action 이벤트에서 호출)
+void SendSync(object payload)
+{
+    try
+    {
+        if (!pipeServer.IsConnected) return;
+        string json = JsonSerializer.Serialize(payload);
+        writer.WriteLine(json);
+    }
+    catch { }
+}
+
+// JSON 전송 헬퍼 (비동기 버전 - 메인 흐름에서 호출)
 async Task SendAsync(object payload)
 {
     try
@@ -68,14 +80,14 @@ async Task SendAsync(object payload)
 // PacketParserService 초기화 및 이벤트 연결
 var parser = new PacketParserService();
 
-parser.OnDamageEvent += async dmg =>
-    await SendAsync(dmg);
+parser.OnDamageEvent += dmg =>
+    SendSync(dmg);
 
-parser.OnEntityInfoEvent += async info =>
-    await SendAsync(new { type = "entity", entityId = info.entityId, name = info.name });
+parser.OnEntityInfoEvent += info =>
+    SendSync(new { type = "entity", entityId = info.entityId, name = info.name });
 
-parser.OnBossHpEvent += async boss =>
-    await SendAsync(new
+parser.OnBossHpEvent += boss =>
+    SendSync(new
     {
         type      = "bossHp",
         bossId    = boss.bossId,
@@ -136,9 +148,9 @@ Console.WriteLine("[Capture] Exiting normally.");
 return 0;
 
 // ── 로컬 함수: 패킷 수신 핸들러 ─────────────────────────────
-// async void: 이벤트 핸들러는 반환값이 없으므로 async void 사용
-// 내부 예외는 catch로 격리 → 캡처 루프 중단 방지
-async void OnPacketArrival(object? sender, SharpPcap.PacketCapture e)
+// PacketCapture는 ref struct → async 파라미터 불가
+// 동기 핸들러에서 데이터만 복사 후 ParsePacketAsync를 fire-and-forget
+void OnPacketArrival(object? sender, SharpPcap.PacketCapture e)
 {
     try
     {
@@ -147,7 +159,10 @@ async void OnPacketArrival(object? sender, SharpPcap.PacketCapture e)
         var tcp    = packet.Extract<PacketDotNet.TcpPacket>();
 
         if (tcp?.PayloadData is { Length: > 0 } payload && tcp.SourcePort == port)
-            await parser.ParsePacketAsync(payload);
+        {
+            var data = payload.ToArray();
+            _ = Task.Run(() => parser.ParsePacket(data));
+        }
     }
     catch { }
 }
