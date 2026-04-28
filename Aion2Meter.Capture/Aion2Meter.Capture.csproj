@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- 콘솔 앱: UI 없이 패킷 캡처만 담당 -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>Aion2Meter.Capture</RootNamespace>
+    <AssemblyName>Aion2Meter.Capture</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12</LangVersion>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SharpPcap" Version="6.3.0" />
+    <PackageReference Include="PacketDotNet" Version="1.4.7" />
+  </ItemGroup>
+
+</Project>

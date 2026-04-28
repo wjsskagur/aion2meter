@@ -5,25 +5,38 @@ using System.Collections.ObjectModel;
 namespace Aion2Meter.ViewModels;
 
 /// <summary>
-/// 메인 창의 ViewModel. 모든 서비스를 연결하고 UI 상태를 관리.
-/// 
+/// 메인 창의 ViewModel.
 /// 의존성 흐름:
-/// PacketCaptureService → PacketParserService → CombatTrackerService → MainViewModel → UI
+///   CaptureProcessService (별도 프로세스) → Named Pipe → CombatTrackerService → MainViewModel → UI
 /// </summary>
 public class MainViewModel : BaseViewModel
 {
-    private readonly PacketParserService _parser;
-    private readonly PacketCaptureService _capture;
+    private readonly CaptureProcessService _capture;
     private readonly CombatTrackerService _tracker;
     private readonly SettingsService _settings;
+    private System.Timers.Timer? _timerRefresh;
 
-    // ── UI 바인딩 프로퍼티 ─────────────────────────────────────
+    // ── UI 바인딩 프로퍼티 ────────────────────────────────────
 
-    private string _statusMessage = "대기 중...";
+    private string _statusMessage = "시작 대기 중...";
     public string StatusMessage
     {
         get => _statusMessage;
         set => SetProperty(ref _statusMessage, value);
+    }
+
+    private bool _isCapturing = false;
+    public bool IsCapturing
+    {
+        get => _isCapturing;
+        set => SetProperty(ref _isCapturing, value);
+    }
+
+    private bool _isInCombat = false;
+    public bool IsInCombat
+    {
+        get => _isInCombat;
+        set => SetProperty(ref _isInCombat, value);
     }
 
     private string _bossName = "-";
@@ -40,7 +53,7 @@ public class MainViewModel : BaseViewModel
         set => SetProperty(ref _bossHpText, value);
     }
 
-    private double _bossHpPercent = 1.0;
+    private double _bossHpPercent = 0;
     public double BossHpPercent
     {
         get => _bossHpPercent;
@@ -54,151 +67,116 @@ public class MainViewModel : BaseViewModel
         set => SetProperty(ref _combatTimer, value);
     }
 
-    private bool _isInCombat = false;
-    public bool IsInCombat
-    {
-        get => _isInCombat;
-        set => SetProperty(ref _isInCombat, value);
-    }
-
-    private bool _isCapturing = false;
-    public bool IsCapturing
-    {
-        get => _isCapturing;
-        set => SetProperty(ref _isCapturing, value);
-    }
-
-    /// <summary>플레이어 목록 (CombatTrackerService의 컬렉션을 직접 노출)</summary>
     public ObservableCollection<PlayerStats> Players => _tracker.Players;
-
-    /// <summary>플레이어 없을 때 대기 메시지 표시용</summary>
     public bool HasNoPlayers => _tracker.Players.Count == 0;
-
-    /// <summary>전투 기록 목록</summary>
     public ObservableCollection<CombatSession> History => _tracker.History;
-
     public AppSettings Settings => _settings.Settings;
 
-    // ── FontScale 기반 동적 폰트 크기 ─────────────────────
-    // FontScale을 바꾸면 아래 프로퍼티들이 일괄 변경됨
+    // FontScale 기반 동적 폰트 크기
     public double NameFontSize   => Math.Round(11 * Settings.FontScale, 1);
     public double DamageFontSize => Math.Round(10 * Settings.FontScale, 1);
     public double DpsFontSize    => Math.Round(11 * Settings.FontScale, 1);
 
     // ── 커맨드 ────────────────────────────────────────────────
-
     public RelayCommand ResetCommand { get; }
     public RelayCommand ToggleCaptureCommand { get; }
     public RelayCommand SaveSettingsCommand { get; }
-
-    // ── 타이머 ────────────────────────────────────────────────
-    private System.Timers.Timer? _timerRefresh;
 
     public MainViewModel()
     {
         _settings = new SettingsService();
         _settings.Load();
 
-        _parser = new PacketParserService();
-        _capture = new PacketCaptureService(_parser);
+        _capture = new CaptureProcessService();
         _tracker = new CombatTrackerService();
 
-        // ⑥ 이벤트 핸들러를 명명된 메서드로 연결 → Cleanup에서 -= 로 정확히 해제 가능
-        //    람다로 연결하면 해제 불가 (다른 인스턴스로 인식됨)
-        _capture.OnCombatEvent += OnCombatEvent;
-        _capture.OnEntityInfo += OnEntityInfo;
-        _capture.OnError += OnCaptureError;
-        _parser.OnBossHp += OnBossHp;
+        // 이벤트 연결 (명명된 메서드 → Cleanup에서 정확히 해제 가능)
+        _capture.OnCombatEvent += OnCombatEventReceived;
+        _capture.OnEntityInfo  += OnEntityInfoReceived;
+        _capture.OnBossHp      += OnBossHpReceived;
+        _capture.OnError       += OnCaptureError;
+        _capture.OnStatus      += OnCaptureStatus;
         _tracker.Players.CollectionChanged += OnPlayersChanged;
 
-        ResetCommand = new RelayCommand(OnReset);
+        ResetCommand         = new RelayCommand(OnReset);
         ToggleCaptureCommand = new RelayCommand(OnToggleCapture);
-        SaveSettingsCommand = new RelayCommand(OnSaveSettings);
+        SaveSettingsCommand  = new RelayCommand(OnSaveSettings);
 
         _timerRefresh = new System.Timers.Timer(1000);
         _timerRefresh.Elapsed += (_, _) => RefreshTimer();
         _timerRefresh.Start();
-
-        // StartCapture는 생성자에서 호출하지 않음
-        // → MainWindow.Loaded 이후 명시적으로 호출
-        StatusMessage = "시작 대기 중...";
     }
 
-    // ⑥ 명명된 이벤트 핸들러
-    private void OnCombatEvent(object? s, CombatEvent e) => _tracker.ProcessEvent(e);
-    private void OnEntityInfo(object? s, (uint entityId, string name) e) =>
+    // ── 이벤트 핸들러 ─────────────────────────────────────────
+
+    private void OnCombatEventReceived(object? s, CombatEvent e) =>
+        _tracker.ProcessEvent(e);
+
+    private void OnEntityInfoReceived(object? s, (uint entityId, string name) e) =>
         _tracker.UpdateEntityName(e.entityId, e.name);
+
+    private void OnBossHpReceived(object? s, (uint bossId, string bossName, long currentHp, long maxHp) e)
+    {
+        App.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            BossName      = e.bossName;
+            BossHpPercent = e.maxHp > 0 ? (double)e.currentHp / e.maxHp : 0;
+            BossHpText    = $"{FormatNumber(e.currentHp)} / {FormatNumber(e.maxHp)}";
+            IsInCombat    = e.currentHp > 0;
+
+            if (e.currentHp <= 0)
+                _tracker.EndCombat();
+        });
+    }
+
     private void OnCaptureError(object? s, string msg) =>
-        App.Current.Dispatcher.BeginInvoke(() => StatusMessage = msg);
-    private void OnBossHp(object? s, (uint bossId, string bossName, long currentHp, long maxHp) e) =>
-        UpdateBossHp(e.bossId, e.bossName, e.currentHp, e.maxHp);
-    private void OnPlayersChanged(object? s, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
+        App.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            StatusMessage = msg;
+            IsCapturing = false;
+        });
+
+    private void OnCaptureStatus(object? s, string msg) =>
+        App.Current?.Dispatcher.BeginInvoke(() => StatusMessage = msg);
+
+    private void OnPlayersChanged(object? s,
+        System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
         OnPropertyChanged(nameof(HasNoPlayers));
 
+    // ── 캡처 제어 ─────────────────────────────────────────────
+
     /// <summary>
-    /// 패킷 캡처 시작. MainWindow.Loaded 이후 호출.
-    /// SharpPcap은 내부적으로 STA(Single Thread Apartment) 스레드 필요할 수 있음.
-    /// 전용 스레드를 생성해서 완전히 격리.
+    /// 캡처 시작. MainWindow.Loaded 이후에만 호출.
+    /// CaptureProcessService가 별도 프로세스를 띄우므로 UI 블로킹 없음.
     /// </summary>
-    public void StartCapture()
+    public async Task StartCaptureAsync()
     {
         StatusMessage = "캡처 초기화 중...";
 
-        var thread = new System.Threading.Thread(() =>
-        {
-            try
-            {
-                bool ok = _capture.Start(
-                    _settings.Settings.NetworkInterface,
-                    _settings.Settings.ServerIp);
+        bool ok = await _capture.StartAsync(
+            _settings.Settings.AionPort,
+            _settings.Settings.ServerIp);
 
-                App.Current?.Dispatcher.BeginInvoke(() =>
-                {
-                    IsCapturing = ok;
-                    StatusMessage = ok ? "캡처 중..." : "캡처 시작 실패 - Npcap 설치 확인";
-                });
-            }
-            catch (Exception ex)
-            {
-                App.Current?.Dispatcher.BeginInvoke(() =>
-                {
-                    IsCapturing = false;
-                    StatusMessage = $"캡처 오류: {ex.Message}";
-                });
-            }
-        });
-
-        // STA 설정: COM/WMI 컴포넌트 호환
-        thread.SetApartmentState(System.Threading.ApartmentState.STA);
-        thread.IsBackground = true; // 앱 종료 시 자동 종료
-        thread.Start();
+        IsCapturing = ok;
+        if (!ok)
+            StatusMessage = "캡처 시작 실패 - Npcap WinPcap 호환 모드 확인";
     }
 
-    private void OnToggleCapture()
+    private async void OnToggleCapture()
     {
         if (IsCapturing)
         {
-            Task.Run(() =>
-            {
-                _capture.Stop();
-                App.Current.Dispatcher.BeginInvoke(() =>
-                {
-                    IsCapturing = false;
-                    StatusMessage = "캡처 중단됨";
-                });
-            });
+            _capture.Stop();
+            IsCapturing = false;
+            StatusMessage = "캡처 중단됨";
         }
         else
         {
-            StartCapture();
+            await StartCaptureAsync();
         }
     }
 
-    private void OnReset()
-    {
-        _parser.ClearEntityCache();
-        _tracker.Reset();
-    }
+    private void OnReset() => _tracker.Reset();
 
     private void OnSaveSettings()
     {
@@ -209,19 +187,7 @@ public class MainViewModel : BaseViewModel
         OnPropertyChanged(nameof(DpsFontSize));
     }
 
-    private void UpdateBossHp(uint bossId, string bossName, long current, long max)
-    {
-        App.Current.Dispatcher.BeginInvoke(() =>
-        {
-            BossName = bossName;
-            BossHpPercent = max > 0 ? (double)current / max : 0;
-            BossHpText = $"{FormatNumber(current)} / {FormatNumber(max)}";
-            IsInCombat = current > 0;
-
-            if (current <= 0)
-                _tracker.EndCombat();
-        });
-    }
+    // ── 타이머 ────────────────────────────────────────────────
 
     private void RefreshTimer()
     {
@@ -229,36 +195,42 @@ public class MainViewModel : BaseViewModel
         if (session?.IsActive == true)
         {
             var elapsed = session.ElapsedSeconds;
-            int minutes = (int)(elapsed / 60);
-            int seconds = (int)(elapsed % 60);
-            App.Current.Dispatcher.BeginInvoke(() =>
+            int min = (int)(elapsed / 60);
+            int sec = (int)(elapsed % 60);
+            App.Current?.Dispatcher.BeginInvoke(() =>
             {
-                CombatTimer = $"{minutes:D2}:{seconds:D2}";
+                CombatTimer = $"{min:D2}:{sec:D2}";
                 IsInCombat = true;
             });
         }
         else
         {
-            // 전투 종료 or 세션 없음 → 인디케이터 끄기
-            App.Current.Dispatcher.BeginInvoke(() => IsInCombat = false);
+            App.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                IsInCombat = false;
+            });
         }
     }
 
+    // ── 정리 ──────────────────────────────────────────────────
+
     private static string FormatNumber(long n) =>
         n >= 1_000_000 ? $"{n / 1_000_000.0:F1}M" :
-        n >= 1_000 ? $"{n / 1_000.0:F1}K" : n.ToString();
+        n >= 1_000     ? $"{n / 1_000.0:F1}K"     : n.ToString();
 
     public void Cleanup()
     {
-        // ⑥ 이벤트 핸들러 명시적 해제 → GC가 ViewModel을 수집할 수 있도록
-        _capture.OnCombatEvent -= OnCombatEvent;
-        _capture.OnEntityInfo -= OnEntityInfo;
-        _capture.OnError -= OnCaptureError;
-        _parser.OnBossHp -= OnBossHp;
+        _capture.OnCombatEvent -= OnCombatEventReceived;
+        _capture.OnEntityInfo  -= OnEntityInfoReceived;
+        _capture.OnBossHp      -= OnBossHpReceived;
+        _capture.OnError       -= OnCaptureError;
+        _capture.OnStatus      -= OnCaptureStatus;
         _tracker.Players.CollectionChanged -= OnPlayersChanged;
 
         _timerRefresh?.Stop();
         _timerRefresh?.Dispose();
+        _timerRefresh = null;
+
         _capture.Stop();
         _capture.Dispose();
         _tracker.Dispose();

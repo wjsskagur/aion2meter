@@ -88,8 +88,11 @@ public static class NpcapHelper
             };
 
             var process = Process.Start(psi);
-            process?.WaitForExit();
-            return process?.ExitCode == 0;
+            if (process == null) return false;
+
+            // WaitForExitAsync: 비동기 대기 → UI 블로킹 없음
+            await process.WaitForExitAsync();
+            return process.ExitCode == 0;
         }
         catch
         {
