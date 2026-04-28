@@ -14,7 +14,7 @@ public class MainViewModel : BaseViewModel
     private readonly CaptureProcessService _capture;
     private readonly CombatTrackerService _tracker;
     private readonly SettingsService _settings;
-    private System.Timers.Timer? _timerRefresh;
+    private System.Windows.Threading.DispatcherTimer? _timerRefresh;
 
     // ── UI 바인딩 프로퍼티 ────────────────────────────────────
 
@@ -102,8 +102,12 @@ public class MainViewModel : BaseViewModel
         ToggleCaptureCommand = new RelayCommand(OnToggleCapture);
         SaveSettingsCommand  = new RelayCommand(OnSaveSettings);
 
-        _timerRefresh = new System.Timers.Timer(1000);
-        _timerRefresh.Elapsed += (_, _) => RefreshTimer();
+        _timerRefresh = new System.Windows.Threading.DispatcherTimer(
+            System.Windows.Threading.DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _timerRefresh.Tick += (_, _) => RefreshTimer();
         // Timer는 StartCapture() 호출 시 시작
     }
 
@@ -156,13 +160,13 @@ public class MainViewModel : BaseViewModel
     public void StartCapture()
     {
         WriteLog("StartCapture - begin");
-        App.Current?.Dispatcher.BeginInvoke(() => StatusMessage = "캡처 초기화 중...");
+        StatusMessage = "캡처 초기화 중...";
         WriteLog("StartCapture - calling _capture.Start");
         _capture.Start(_settings.Settings.AionPort, _settings.Settings.ServerIp);
         WriteLog("StartCapture - _capture.Start returned");
         _tracker.StartTimer();
         _timerRefresh?.Start();
-        App.Current?.Dispatcher.BeginInvoke(() => IsCapturing = true);
+        IsCapturing = true;
         WriteLog("StartCapture - done");
     }
 
@@ -206,26 +210,19 @@ public class MainViewModel : BaseViewModel
 
     // ── 타이머 ────────────────────────────────────────────────
 
+    // DispatcherTimer Tick → 이미 UI 스레드, BeginInvoke 불필요
     private void RefreshTimer()
     {
         var session = _tracker.CurrentSession;
         if (session?.IsActive == true)
         {
             var elapsed = session.ElapsedSeconds;
-            int min = (int)(elapsed / 60);
-            int sec = (int)(elapsed % 60);
-            App.Current?.Dispatcher.BeginInvoke(() =>
-            {
-                CombatTimer = $"{min:D2}:{sec:D2}";
-                IsInCombat = true;
-            });
+            CombatTimer = $"{(int)(elapsed / 60):D2}:{(int)(elapsed % 60):D2}";
+            IsInCombat = true;
         }
         else
         {
-            App.Current?.Dispatcher.BeginInvoke(() =>
-            {
-                IsInCombat = false;
-            });
+            IsInCombat = false;
         }
     }
 
@@ -245,7 +242,6 @@ public class MainViewModel : BaseViewModel
         _tracker.Players.CollectionChanged -= OnPlayersChanged;
 
         _timerRefresh?.Stop();
-        _timerRefresh?.Dispose();
         _timerRefresh = null;
 
         _capture.Stop();

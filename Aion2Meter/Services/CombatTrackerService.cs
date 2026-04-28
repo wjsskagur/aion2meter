@@ -1,25 +1,23 @@
 using Aion2Meter.Models;
 using System.Collections.ObjectModel;
+using System.Windows.Threading;
 
 namespace Aion2Meter.Services;
 
 /// <summary>
 /// CombatEvent를 받아 PlayerStats를 집계하고 전투 세션을 관리.
-///
-/// 최적화 포인트:
-/// ① Events 상한 제한: 최근 5000개만 유지 → 메모리 무제한 증가 방지
-/// ② lock 범위 최소화: 스냅샷 복사 후 lock 해제, Dispatcher.Invoke는 lock 밖
-/// ③ TotalPartyDamage 캐싱: 매번 LINQ Sum 대신 이벤트마다 누적
-/// ④ Dispose 패턴: _disposed 플래그로 Timer 콜백 후처리 방지
+/// 
+/// DispatcherTimer 사용 이유:
+/// System.Timers.Timer는 백그라운드 스레드에서 콜백 실행 →
+/// ObservableCollection 조작 시 cross-thread 예외 또는 데드락 발생.
+/// DispatcherTimer는 UI 스레드에서 실행되므로 안전.
 /// </summary>
 public class CombatTrackerService : IDisposable
 {
     private readonly object _lock = new();
     private CombatSession? _currentSession;
-    private System.Timers.Timer? _dpsTimer;
+    private DispatcherTimer? _dpsTimer;
     private bool _disposed = false;
-
-    // ③ TotalPartyDamage 캐싱 — ProcessEvent마다 누적, LINQ Sum 반복 제거
     private long _totalPartyDamageCache = 0;
 
     public uint LocalPlayerId { get; set; }
@@ -33,14 +31,18 @@ public class CombatTrackerService : IDisposable
     public event EventHandler? OnCombatUpdated;
     public event EventHandler<CombatSession>? OnCombatEnded;
 
-    public CombatTrackerService()
-    {
-        _dpsTimer = new System.Timers.Timer(500);
-        _dpsTimer.Elapsed += (s, e) => RefreshDps();
-        // Timer는 명시적으로 Start() 호출 시 시작
-    }
+    public CombatTrackerService() { }
 
-    public void StartTimer() => _dpsTimer?.Start();
+    /// <summary>UI 스레드에서 호출해야 함 (DispatcherTimer 생성)</summary>
+    public void StartTimer()
+    {
+        _dpsTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _dpsTimer.Tick += (_, _) => RefreshDps();
+        _dpsTimer.Start();
+    }
 
     public void ProcessEvent(CombatEvent evt)
     {
@@ -50,26 +52,28 @@ public class CombatTrackerService : IDisposable
         {
             if (_currentSession == null || !_currentSession.IsActive)
             {
-                StartNewSession(evt.TargetId, evt.TargetName);
+                _currentSession = new CombatSession
+                {
+                    BossId    = evt.TargetId,
+                    BossName  = evt.TargetName,
+                    StartTime = DateTime.Now
+                };
                 _totalPartyDamageCache = 0;
             }
 
             var session = _currentSession!;
 
-            // ① Events 상한: 최근 5000개 유지 (5000 x ~100bytes = ~500KB)
             if (session.Events.Count >= 5000)
                 session.Events.RemoveAt(0);
             session.Events.Add(evt);
 
             if (!session.Players.ContainsKey(evt.AttackerId))
-            {
                 session.Players[evt.AttackerId] = new PlayerStats
                 {
-                    EntityId = evt.AttackerId,
-                    Name = evt.AttackerName,
+                    EntityId      = evt.AttackerId,
+                    Name          = evt.AttackerName,
                     IsLocalPlayer = evt.AttackerId == LocalPlayerId
                 };
-            }
 
             var player = session.Players[evt.AttackerId];
             player.Name = evt.AttackerName;
@@ -77,24 +81,23 @@ public class CombatTrackerService : IDisposable
             player.HitCount++;
             if (evt.IsCritical) player.CritCount++;
 
-            // ③ 누적 캐시 갱신
             _totalPartyDamageCache += evt.Damage;
 
             if (!player.Skills.ContainsKey(evt.SkillId))
-            {
                 player.Skills[evt.SkillId] = new SkillStats
                 {
-                    SkillId = evt.SkillId,
+                    SkillId   = evt.SkillId,
                     SkillName = evt.SkillName
                 };
-            }
+
             var skill = player.Skills[evt.SkillId];
             skill.TotalDamage += evt.Damage;
             skill.HitCount++;
             if (evt.IsCritical) skill.CritCount++;
         }
 
-        RefreshUi();
+        // UI 업데이트는 DispatcherTimer에서 처리 (500ms마다)
+        // 매 이벤트마다 UI 갱신하면 과부하
     }
 
     public void UpdateEntityName(uint entityId, string name)
@@ -121,7 +124,7 @@ public class CombatTrackerService : IDisposable
             _currentSession = null;
             _totalPartyDamageCache = 0;
         }
-        RefreshUi();
+        // DispatcherTimer가 다음 tick에 UI 갱신
     }
 
     public void EndCombat()
@@ -135,105 +138,70 @@ public class CombatTrackerService : IDisposable
             SaveToHistory(_currentSession);
             ended = _currentSession;
         }
-        // ② lock 밖에서 이벤트 발행 (핸들러 내 lock 재진입 → 데드락 방지)
         if (ended != null)
             OnCombatEnded?.Invoke(this, ended);
-        RefreshUi();
-    }
-
-    private void StartNewSession(uint bossId, string bossName)
-    {
-        _currentSession = new CombatSession
-        {
-            BossId = bossId,
-            BossName = bossName,
-            StartTime = DateTime.Now
-        };
     }
 
     private void SaveToHistory(CombatSession session)
     {
-        // 히스토리 저장 전 총 피해량 확정
         session.TotalPartyDamage = _totalPartyDamageCache;
-
-        App.Current?.Dispatcher.BeginInvoke(() =>
-        {
-            History.Insert(0, session);
-            while (History.Count > 20)
-                History.RemoveAt(History.Count - 1);
-        });
+        // DispatcherTimer 콜백(UI 스레드)에서 호출되므로 BeginInvoke 불필요
+        History.Insert(0, session);
+        while (History.Count > 20)
+            History.RemoveAt(History.Count - 1);
     }
 
+    /// <summary>
+    /// DispatcherTimer Tick에서 호출 → UI 스레드에서 실행됨.
+    /// BeginInvoke 불필요, cross-thread 없음.
+    /// </summary>
     private void RefreshDps()
     {
         if (_disposed) return;
 
-        // ② 스냅샷 복사 후 lock 해제 → DPS 계산은 lock 밖에서
         List<PlayerStats>? snapshot = null;
         double elapsed = 0;
         long totalDmg = 0;
 
         lock (_lock)
         {
-            if (_currentSession == null) return;
+            if (_currentSession == null)
+            {
+                // 세션 없으면 Players 비우기만
+                if (Players.Count > 0) Players.Clear();
+                return;
+            }
             elapsed = _currentSession.ElapsedSeconds;
             if (elapsed < 0.1) return;
             snapshot = _currentSession.Players.Values.ToList();
             totalDmg = _totalPartyDamageCache;
         }
 
+        if (snapshot == null) return;
+
+        // DPS 계산 및 정렬
         foreach (var player in snapshot)
         {
-            player.Dps = player.TotalDamage / elapsed;
+            player.Dps           = player.TotalDamage / elapsed;
             player.DamagePercent = totalDmg > 0 ? (double)player.TotalDamage / totalDmg : 0;
         }
 
-        RefreshUi();
+        var sorted = snapshot.OrderByDescending(p => p.TotalDamage).ToList();
+
+        // UI 업데이트 (이미 UI 스레드이므로 직접 조작)
+        Players.Clear();
+        foreach (var p in sorted)
+            Players.Add(p);
+
+        OnCombatUpdated?.Invoke(this, EventArgs.Empty);
     }
 
-    private void RefreshUi()
-    {
-        if (_disposed) return;
-
-        List<PlayerStats>? snapshot = null;
-        lock (_lock)
-        {
-            if (_currentSession != null)
-                snapshot = _currentSession.Players.Values
-                    .OrderByDescending(p => p.TotalDamage)
-                    .ToList();
-        }
-
-        // 세션도 없고 플레이어도 없으면 UI 갱신 불필요
-        if (snapshot == null && Players.Count == 0) return;
-
-        App.Current?.Dispatcher.BeginInvoke(() =>
-        {
-            Players.Clear();
-            if (snapshot != null)
-                foreach (var p in snapshot)
-                    Players.Add(p);
-            OnCombatUpdated?.Invoke(this, EventArgs.Empty);
-        });
-    }
-
-    // ④ 표준 Dispose 패턴 — GC.SuppressFinalize로 finalizer 중복 실행 방지
     public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
     {
         if (_disposed) return;
         _disposed = true;
-
-        if (disposing)
-        {
-            _dpsTimer?.Stop();
-            _dpsTimer?.Dispose();
-            _dpsTimer = null;
-        }
+        _dpsTimer?.Stop();
+        _dpsTimer = null;
+        GC.SuppressFinalize(this);
     }
 }
