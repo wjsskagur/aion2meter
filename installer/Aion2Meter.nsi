@@ -1,9 +1,6 @@
 ; ============================================================
 ; Aion2 Meter - NSIS Installer Script
-; makensis /DVERSION=1.0.0 /DOUTPUT_DIR=C:\path\to\publish Aion2Meter.nsi
 ; ============================================================
-
-; No Unicode directive - use ASCII/English only to avoid encoding issues
 
 !define APP_NAME       "Aion2 Meter"
 !define APP_EXE        "Aion2Meter.exe"
@@ -29,14 +26,10 @@ RequestExecutionLevel admin
 !include "LogicLib.nsh"
 
 !define MUI_ABORTWARNING
-!define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
-!define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
+!define MUI_ICON "..\Aion2Meter\app.ico"
+!define MUI_UNICON "..\Aion2Meter\app.ico"
 
-!define MUI_WELCOMEPAGE_TITLE "Welcome to Aion2 Meter ${VERSION} Setup"
-!define MUI_WELCOMEPAGE_TEXT "This will install Aion2 Meter on your computer.$\r$\n$\r$\nNpcap will be installed automatically if not already present.$\r$\n$\r$\nClick Next to continue."
-!define MUI_DIRECTORYPAGE_TEXT_TOP "Choose the folder to install Aion2 Meter. Default path is recommended."
-!define MUI_FINISHPAGE_TEXT "Aion2 Meter has been installed.$\r$\n$\r$\nRun as Administrator for packet capture to work."
-
+; MUI default Korean strings are used (no custom overrides = no encoding issue)
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -63,7 +56,7 @@ Section "MainSection" SEC01
     ExecWait '"$INSTDIR\npcap-installer.exe" /winpcap_mode' $1
     Delete "$INSTDIR\npcap-installer.exe"
     ${If} $1 != 0
-      MessageBox MB_OK|MB_ICONEXCLAMATION "Npcap installation failed (code: $1).$\n$\nPlease install manually: https://npcap.com$\n$\nMake sure to check: Install Npcap in WinPcap API-compatible Mode"
+      MessageBox MB_OK|MB_ICONEXCLAMATION "Npcap installation failed (code: $1).$\n$\nPlease install manually: https://npcap.com$\n$\nCheck: Install Npcap in WinPcap API-compatible Mode"
     ${Else}
       DetailPrint "Npcap installed successfully."
     ${EndIf}
@@ -105,14 +98,11 @@ Section "Uninstall"
     Abort
   ${EndIf}
 
-  ; Delete installed files by extension (safe - no RMDir /r)
   Delete "$INSTDIR\${APP_EXE}"
   Delete "$INSTDIR\Uninstall.exe"
   Delete "$INSTDIR\*.dll"
   Delete "$INSTDIR\*.json"
   Delete "$INSTDIR\*.pdb"
-
-  ; Remove folder only if empty
   RMDir "$INSTDIR"
 
   Delete "$DESKTOP\${APP_NAME}.lnk"

@@ -127,7 +127,7 @@ public class MainViewModel : BaseViewModel
     private void OnEntityInfo(object? s, (uint entityId, string name) e) =>
         _tracker.UpdateEntityName(e.entityId, e.name);
     private void OnCaptureError(object? s, string msg) =>
-        App.Current.Dispatcher.Invoke(() => StatusMessage = msg);
+        App.Current.Dispatcher.BeginInvoke(() => StatusMessage = msg);
     private void OnBossHp(object? s, (uint bossId, string bossName, long currentHp, long maxHp) e) =>
         UpdateBossHp(e.bossId, e.bossName, e.currentHp, e.maxHp);
     private void OnPlayersChanged(object? s, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
@@ -135,20 +135,33 @@ public class MainViewModel : BaseViewModel
 
     private void StartCapture()
     {
-        // Npcap 드라이버 초기화(CaptureDeviceList.Instance, device.Open)가
-        // 느릴 수 있으므로 백그라운드에서 실행 → UI 블로킹 방지
         StatusMessage = "캡처 초기화 중...";
+
+        // Task.Run: Npcap 드라이버 초기화를 스레드풀에서 실행
+        // ConfigureAwait(false): Dispatcher 컨텍스트로 돌아오지 않음 → 데드락 방지
         Task.Run(() =>
         {
-            bool ok = _capture.Start(
-                _settings.Settings.NetworkInterface,
-                _settings.Settings.ServerIp);
-
-            App.Current.Dispatcher.Invoke(() =>
+            try
             {
-                IsCapturing = ok;
-                StatusMessage = ok ? "캡처 중..." : "캡처 시작 실패 - Npcap 설치 확인";
-            });
+                bool ok = _capture.Start(
+                    _settings.Settings.NetworkInterface,
+                    _settings.Settings.ServerIp);
+
+                // UI 업데이트만 Dispatcher로
+                App.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    IsCapturing = ok;
+                    StatusMessage = ok ? "캡처 중..." : "캡처 시작 실패 - Npcap 설치 확인";
+                });
+            }
+            catch (Exception ex)
+            {
+                App.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    IsCapturing = false;
+                    StatusMessage = $"캡처 오류: {ex.Message}";
+                });
+            }
         });
     }
 
@@ -159,7 +172,7 @@ public class MainViewModel : BaseViewModel
             Task.Run(() =>
             {
                 _capture.Stop();
-                App.Current.Dispatcher.Invoke(() =>
+                App.Current.Dispatcher.BeginInvoke(() =>
                 {
                     IsCapturing = false;
                     StatusMessage = "캡처 중단됨";
@@ -189,7 +202,7 @@ public class MainViewModel : BaseViewModel
 
     private void UpdateBossHp(uint bossId, string bossName, long current, long max)
     {
-        App.Current.Dispatcher.Invoke(() =>
+        App.Current.Dispatcher.BeginInvoke(() =>
         {
             BossName = bossName;
             BossHpPercent = max > 0 ? (double)current / max : 0;
@@ -209,7 +222,7 @@ public class MainViewModel : BaseViewModel
             var elapsed = session.ElapsedSeconds;
             int minutes = (int)(elapsed / 60);
             int seconds = (int)(elapsed % 60);
-            App.Current.Dispatcher.Invoke(() =>
+            App.Current.Dispatcher.BeginInvoke(() =>
             {
                 CombatTimer = $"{minutes:D2}:{seconds:D2}";
                 IsInCombat = true;
@@ -218,7 +231,7 @@ public class MainViewModel : BaseViewModel
         else
         {
             // 전투 종료 or 세션 없음 → 인디케이터 끄기
-            App.Current.Dispatcher.Invoke(() => IsInCombat = false);
+            App.Current.Dispatcher.BeginInvoke(() => IsInCombat = false);
         }
     }
 

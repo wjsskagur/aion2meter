@@ -154,7 +154,7 @@ public class CombatTrackerService : IDisposable
         // 히스토리 저장 전 총 피해량 확정
         session.TotalPartyDamage = _totalPartyDamageCache;
 
-        App.Current?.Dispatcher.Invoke(() =>
+        App.Current?.Dispatcher.BeginInvoke(() =>
         {
             History.Insert(0, session);
             while (History.Count > 20)
@@ -205,7 +205,7 @@ public class CombatTrackerService : IDisposable
         // 세션도 없고 플레이어도 없으면 UI 갱신 불필요
         if (snapshot == null && Players.Count == 0) return;
 
-        App.Current?.Dispatcher.Invoke(() =>
+        App.Current?.Dispatcher.BeginInvoke(() =>
         {
             Players.Clear();
             if (snapshot != null)

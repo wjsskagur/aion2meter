@@ -5,47 +5,57 @@ namespace Aion2Meter.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly MainViewModel _vm;
+    private MainViewModel? _vm;
 
     public MainWindow()
     {
         InitializeComponent();
+        // ViewModel 초기화를 Loaded 이후로 미룸
+        // 이유: MainViewModel 생성자에서 PacketCaptureService 초기화 시
+        //       Npcap 드라이버 로딩이 UI 스레드를 블로킹할 수 있음
+        //       창이 화면에 완전히 뜬 뒤 초기화해야 응답없음 방지
+        Loaded += OnWindowLoaded;
+    }
+
+    private async void OnWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnWindowLoaded;
+
+        // 창이 완전히 렌더링될 시간을 줌 (UI 스레드 양보)
+        await Task.Yield();
+
+        // ViewModel은 UI 스레드에서 생성 (Dispatcher 접근 안전)
         _vm = new MainViewModel();
         DataContext = _vm;
     }
 
-    // 헤더 드래그로 창 이동
-    // WindowStyle=None이라 기본 타이틀바가 없어서 직접 구현
     private void Header_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)
         {
-            // 더블클릭: 컴팩트 모드 토글
-            _vm.Settings.CompactMode = !_vm.Settings.CompactMode;
+            if (_vm != null)
+                _vm.Settings.CompactMode = !_vm.Settings.CompactMode;
             return;
         }
         DragMove();
-        // 드래그 후 위치 저장
-        _vm.Settings.WindowLeft = Left;
-        _vm.Settings.WindowTop = Top;
+        if (_vm != null)
+        {
+            _vm.Settings.WindowLeft = Left;
+            _vm.Settings.WindowTop = Top;
+        }
     }
 
-    private void CloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        Close();
-    }
+    private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        var settingsWindow = new SettingsWindow(_vm)
-        {
-            Owner = this
-        };
+        if (_vm == null) return;
+        var settingsWindow = new SettingsWindow(_vm) { Owner = this };
         settingsWindow.ShowDialog();
     }
 
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
-        _vm.Cleanup();
+        _vm?.Cleanup();
     }
 }

@@ -21,6 +21,7 @@
     <PublishReadyToRun>true</PublishReadyToRun>
 
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <Version>1.0.0</Version>
   </PropertyGroup>
 
