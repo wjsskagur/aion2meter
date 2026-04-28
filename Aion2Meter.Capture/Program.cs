@@ -25,7 +25,7 @@ string? serverIp = args.Length > 2 ? args[2] : null;
 Console.WriteLine($"[Capture] Connecting pipe={pipeName} port={port}");
 
 // UI 프로세스가 서버 → 이쪽이 클라이언트로 접속
-await using var pipeClient = new NamedPipeClientStream(.ConfigureAwait(false)
+await using var pipeClient = new NamedPipeClientStream(
     ".", pipeName, PipeDirection.Out, PipeOptions.Asynchronous);
 
 try
