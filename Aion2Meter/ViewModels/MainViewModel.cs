@@ -135,21 +135,36 @@ public class MainViewModel : BaseViewModel
 
     private void StartCapture()
     {
-        bool ok = _capture.Start(
-            _settings.Settings.NetworkInterface,
-            _settings.Settings.ServerIp);
+        // Npcap 드라이버 초기화(CaptureDeviceList.Instance, device.Open)가
+        // 느릴 수 있으므로 백그라운드에서 실행 → UI 블로킹 방지
+        StatusMessage = "캡처 초기화 중...";
+        Task.Run(() =>
+        {
+            bool ok = _capture.Start(
+                _settings.Settings.NetworkInterface,
+                _settings.Settings.ServerIp);
 
-        IsCapturing = ok;
-        StatusMessage = ok ? "캡처 중..." : "캡처 시작 실패";
+            App.Current.Dispatcher.Invoke(() =>
+            {
+                IsCapturing = ok;
+                StatusMessage = ok ? "캡처 중..." : "캡처 시작 실패 - Npcap 설치 확인";
+            });
+        });
     }
 
     private void OnToggleCapture()
     {
         if (IsCapturing)
         {
-            _capture.Stop();
-            IsCapturing = false;
-            StatusMessage = "캡처 중단됨";
+            Task.Run(() =>
+            {
+                _capture.Stop();
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    IsCapturing = false;
+                    StatusMessage = "캡처 중단됨";
+                });
+            });
         }
         else
         {

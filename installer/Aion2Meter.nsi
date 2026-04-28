@@ -1,8 +1,9 @@
 ; ============================================================
-; Aion2 Meter - NSIS 인스톨러 스크립트
+; Aion2 Meter - NSIS Installer Script
+; makensis /DVERSION=1.0.0 /DOUTPUT_DIR=C:\path\to\publish Aion2Meter.nsi
 ; ============================================================
 
-Unicode true
+; No Unicode directive - use ASCII/English only to avoid encoding issues
 
 !define APP_NAME       "Aion2 Meter"
 !define APP_EXE        "Aion2Meter.exe"
@@ -19,9 +20,6 @@ Unicode true
 
 Name "${APP_NAME} ${VERSION}"
 OutFile "Aion2Meter-Setup.exe"
-
-; 기본 설치 경로를 고정 서브디렉토리로 강제
-; 사용자가 상위 폴더(Program Files 등)를 직접 선택 못하도록
 InstallDir "$PROGRAMFILES64\${INSTALL_SUBDIR}"
 InstallDirRegKey HKLM "${REG_KEY}" "InstallLocation"
 
@@ -34,8 +32,10 @@ RequestExecutionLevel admin
 !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
 
-; 설치 경로 페이지에서 기본값 설명 추가
-!define MUI_DIRECTORYPAGE_TEXT_TOP "설치 경로를 선택하세요. 기본 경로 사용을 권장합니다."
+!define MUI_WELCOMEPAGE_TITLE "Welcome to Aion2 Meter ${VERSION} Setup"
+!define MUI_WELCOMEPAGE_TEXT "This will install Aion2 Meter on your computer.$\r$\n$\r$\nNpcap will be installed automatically if not already present.$\r$\n$\r$\nClick Next to continue."
+!define MUI_DIRECTORYPAGE_TEXT_TOP "Choose the folder to install Aion2 Meter. Default path is recommended."
+!define MUI_FINISHPAGE_TEXT "Aion2 Meter has been installed.$\r$\n$\r$\nRun as Administrator for packet capture to work."
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -47,50 +47,39 @@ RequestExecutionLevel admin
 
 !insertmacro MUI_LANGUAGE "Korean"
 
-; ── 설치 섹션 ────────────────────────────────────────────
+; ── Install Section ──────────────────────────────────────
 Section "MainSection" SEC01
 
   SetOutPath "$INSTDIR"
 
-  ; publish 폴더 전체 복사 (SharpPcap 네이티브 DLL 포함)
+  ; Copy all publish folder contents (includes SharpPcap native DLLs)
   File /r "${OUTPUT_DIR}\*.*"
 
-  ; ── Npcap 설치 (미설치 시에만) ──────────────────────
+  ; ── Install Npcap (only if not already installed) ──────
   ReadRegStr $0 HKLM "SOFTWARE\Npcap" ""
   ${If} $0 == ""
-    DetailPrint "Npcap 설치 중... (잠시 기다려주세요)"
+    DetailPrint "Installing Npcap..."
     File "npcap-installer.exe"
-
-    ; /winpcap_mode : SharpPcap 필수 조건
-    ; 설치 완료까지 대기 (ExecWait)
     ExecWait '"$INSTDIR\npcap-installer.exe" /winpcap_mode' $1
-
-    ; 설치 파일 정리
     Delete "$INSTDIR\npcap-installer.exe"
-
     ${If} $1 != 0
-      ; 종료 코드가 0이 아니면 실패
-      MessageBox MB_OK|MB_ICONEXCLAMATION "Npcap 설치에 실패했습니다. (종료 코드: $1)$\n$\n수동으로 설치해주세요: https://npcap.com$\n$\n반드시 WinPcap API-compatible Mode 를 체크하세요."
+      MessageBox MB_OK|MB_ICONEXCLAMATION "Npcap installation failed (code: $1).$\n$\nPlease install manually: https://npcap.com$\n$\nMake sure to check: Install Npcap in WinPcap API-compatible Mode"
     ${Else}
-      DetailPrint "Npcap 설치 완료"
+      DetailPrint "Npcap installed successfully."
     ${EndIf}
   ${Else}
-    DetailPrint "Npcap 이미 설치됨, 건너뜀"
+    DetailPrint "Npcap already installed, skipping."
   ${EndIf}
 
-  ; ── 바로가기 생성 (관리자 권한 플래그 포함) ──────────
+  ; ── Create Shortcuts ───────────────────────────────────
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
 
-  nsExec::ExecToLog 'powershell -Command \
-    "$s=(New-Object -COM WScript.Shell).CreateShortcut(\"$DESKTOP\${APP_NAME}.lnk\"); \
-    $s.Save(); \
-    $bytes=[System.IO.File]::ReadAllBytes(\"$DESKTOP\${APP_NAME}.lnk\"); \
-    $bytes[0x15]=$bytes[0x15] -bor 0x20; \
-    [System.IO.File]::WriteAllBytes(\"$DESKTOP\${APP_NAME}.lnk\",$bytes)"'
+  ; Set Run As Administrator flag on desktop shortcut
+  nsExec::ExecToLog 'powershell -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut(\"$DESKTOP\${APP_NAME}.lnk\"); $s.Save(); $bytes=[System.IO.File]::ReadAllBytes(\"$DESKTOP\${APP_NAME}.lnk\"); $bytes[0x15]=$bytes[0x15] -bor 0x20; [System.IO.File]::WriteAllBytes(\"$DESKTOP\${APP_NAME}.lnk\",$bytes)"'
 
-  ; ── 레지스트리 등록 ──────────────────────────────────
+  ; ── Registry ───────────────────────────────────────────
   WriteRegStr HKLM "${REG_KEY}" "DisplayName"     "${APP_NAME}"
   WriteRegStr HKLM "${REG_KEY}" "DisplayVersion"  "${VERSION}"
   WriteRegStr HKLM "${REG_KEY}" "Publisher"       "${PUBLISHER}"
@@ -103,38 +92,29 @@ Section "MainSection" SEC01
 
 SectionEnd
 
-; ── 언인스톨 섹션 ─────────────────────────────────────────
+; ── Uninstall Section ────────────────────────────────────
 Section "Uninstall"
 
-  ; ── 안전 검증 1: $INSTDIR 가 비어있지 않은지 ──────────
   ${If} $INSTDIR == ""
-    MessageBox MB_OK|MB_ICONSTOP "설치 경로를 확인할 수 없습니다. 수동으로 삭제해주세요."
+    MessageBox MB_OK|MB_ICONSTOP "Cannot determine install path. Please uninstall manually."
     Abort
   ${EndIf}
 
-  ; ── 안전 검증 2: 반드시 있어야 할 파일 존재 확인 ──────
-  ; Aion2Meter.exe 없으면 잘못된 경로 → 개별 파일만 삭제
   ${IfNot} ${FileExists} "$INSTDIR\${APP_EXE}"
-    MessageBox MB_OK|MB_ICONEXCLAMATION \
-      "$INSTDIR 에서 ${APP_EXE}를 찾을 수 없습니다.$\n수동으로 삭제해주세요: $INSTDIR"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "${APP_EXE} not found in $INSTDIR.$\nPlease delete manually: $INSTDIR"
     Abort
   ${EndIf}
 
-  ; ── 검증 통과 → 앱이 설치한 파일만 명시적 삭제 ────────
-  ; RMDir /r 대신 확장자별 명시 삭제로 안전성 확보
-  ; 사용자가 직접 넣은 파일은 건드리지 않음
+  ; Delete installed files by extension (safe - no RMDir /r)
   Delete "$INSTDIR\${APP_EXE}"
   Delete "$INSTDIR\Uninstall.exe"
   Delete "$INSTDIR\*.dll"
   Delete "$INSTDIR\*.json"
   Delete "$INSTDIR\*.pdb"
-  Delete "$INSTDIR\*.so"
 
-  ; 폴더가 비어있으면 삭제, 비어있지 않으면 그냥 둠
-  ; (사용자 파일이 남아있을 수 있으므로 /r 사용 안 함)
+  ; Remove folder only if empty
   RMDir "$INSTDIR"
 
-  ; 바로가기 삭제
   Delete "$DESKTOP\${APP_NAME}.lnk"
   Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
   RMDir "$SMPROGRAMS\${APP_NAME}"
