@@ -24,8 +24,8 @@ public partial class MainWindow : Window
     {
         WriteCrashLog("InitStep1 - Creating MainViewModel", null);
         _vm = new MainViewModel();
-        WriteCrashLog("InitStep1 - Setting DataContext", null);
-        DataContext = _vm;
+        WriteCrashLog("InitStep1 - Skipping DataContext for test", null);
+        // DataContext = _vm;  // 테스트: 바인딩 없이 확인
         WriteCrashLog("InitStep1 - Done", null);
         Dispatcher.InvokeAsync(InitStep2, System.Windows.Threading.DispatcherPriority.Background);
     }
