@@ -64,8 +64,8 @@ jobs:
           sed -i "s|<Version>.*</Version>|<Version>${{ steps.version.outputs.VERSION }}</Version>|" \
             Aion2Meter/Aion2Meter.csproj
 
-      # ── 5. dotnet publish → 단일 exe ──────────────────
-      - name: Publish
+      # ── 5. dotnet publish → WPF UI ────────────────────
+      - name: Publish UI
         shell: pwsh
         run: |
           $publishDir = "${{ github.workspace }}\publish"
@@ -76,13 +76,33 @@ jobs:
             -p:PublishReadyToRun=true `
             -o $publishDir
 
-          # 빌드 결과 확인 - 파일 없으면 다음 단계에서 실패하므로 여기서 체크
           if (-not (Test-Path "$publishDir\Aion2Meter.exe")) {
-            Write-Error "Aion2Meter.exe not found in $publishDir"
+            Write-Error "Aion2Meter.exe not found"
             exit 1
           }
-          Write-Host "Published to: $publishDir"
-          Get-ChildItem $publishDir
+          Write-Host "UI published OK"
+
+      # ── 5-2. dotnet publish → 캡처 프로세스 ───────────
+      # Aion2Meter.Capture.exe 를 같은 publish 폴더에 출력
+      # 실행 시 Aion2Meter.exe 와 같은 폴더에 있어야 함
+      - name: Publish Capture Process
+        shell: pwsh
+        run: |
+          $publishDir = "${{ github.workspace }}\publish"
+          dotnet publish Aion2Meter.Capture/Aion2Meter.Capture.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -o $publishDir
+
+          if (-not (Test-Path "$publishDir\Aion2Meter.Capture.exe")) {
+            Write-Error "Aion2Meter.Capture.exe not found"
+            exit 1
+          }
+          Write-Host "Capture process published OK"
+          Write-Host "Files in publish dir:"
+          Get-ChildItem $publishDir | Select-Object Name, Length
 
       # ── 6. NSIS 설치 ──────────────────────────────────
       # NSIS는 Windows Runner에 기본 설치 안 되어 있음
