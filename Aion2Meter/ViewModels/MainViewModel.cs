@@ -104,7 +104,7 @@ public class MainViewModel : BaseViewModel
 
         _timerRefresh = new System.Timers.Timer(1000);
         _timerRefresh.Elapsed += (_, _) => RefreshTimer();
-        _timerRefresh.Start();
+        // Timer는 StartCapture() 호출 시 시작
     }
 
     // ── 이벤트 핸들러 ─────────────────────────────────────────
@@ -155,9 +155,28 @@ public class MainViewModel : BaseViewModel
     /// </summary>
     public void StartCapture()
     {
+        WriteLog("StartCapture - begin");
         App.Current?.Dispatcher.BeginInvoke(() => StatusMessage = "캡처 초기화 중...");
+        WriteLog("StartCapture - calling _capture.Start");
         _capture.Start(_settings.Settings.AionPort, _settings.Settings.ServerIp);
+        WriteLog("StartCapture - _capture.Start returned");
+        _tracker.StartTimer();
+        _timerRefresh?.Start();
         App.Current?.Dispatcher.BeginInvoke(() => IsCapturing = true);
+        WriteLog("StartCapture - done");
+    }
+
+    private static void WriteLog(string msg)
+    {
+        try
+        {
+            string path = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Aion2Meter", "init.log");
+            System.IO.File.AppendAllText(path,
+                $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
+        }
+        catch { }
     }
 
     private void OnToggleCapture()

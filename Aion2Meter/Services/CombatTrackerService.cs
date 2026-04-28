@@ -37,8 +37,10 @@ public class CombatTrackerService : IDisposable
     {
         _dpsTimer = new System.Timers.Timer(500);
         _dpsTimer.Elapsed += (s, e) => RefreshDps();
-        _dpsTimer.Start();
+        // Timer는 명시적으로 Start() 호출 시 시작
     }
+
+    public void StartTimer() => _dpsTimer?.Start();
 
     public void ProcessEvent(CombatEvent evt)
     {

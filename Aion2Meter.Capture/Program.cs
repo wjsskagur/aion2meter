@@ -25,13 +25,13 @@ string? serverIp = args.Length > 2 ? args[2] : null;
 Console.WriteLine($"[Capture] Connecting pipe={pipeName} port={port}");
 
 // UI 프로세스가 서버 → 이쪽이 클라이언트로 접속
-await using var pipeClient = new NamedPipeClientStream(
+await using var pipeClient = new NamedPipeClientStream(.ConfigureAwait(false)
     ".", pipeName, PipeDirection.Out, PipeOptions.Asynchronous);
 
 try
 {
     // UI 서버 접속 (최대 10초)
-    await pipeClient.ConnectAsync(10000);
+    await pipeClient.ConnectAsync(10000).ConfigureAwait(false);
 }
 catch (Exception ex)
 {
@@ -61,7 +61,7 @@ async Task SendAsync(object payload)
     try
     {
         if (!pipeClient.IsConnected) return;
-        await writer.WriteLineAsync(JsonSerializer.Serialize(payload));
+        await writer.WriteLineAsync(JsonSerializer.Serialize(payload)).ConfigureAwait(false);
     }
     catch { }
 }
@@ -99,7 +99,7 @@ try
 
     // UI가 파이프를 닫을 때까지 대기
     while (pipeClient.IsConnected)
-        await Task.Delay(500);
+        await Task.Delay(500).ConfigureAwait(false);
 
     device.OnPacketArrival -= OnPacketArrival;
     device.StopCapture();

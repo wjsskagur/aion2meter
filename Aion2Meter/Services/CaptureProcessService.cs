@@ -33,7 +33,11 @@ public class CaptureProcessService : IDisposable
         if (_disposed) return;
         StopInternal();
 
+        WriteLog("CaptureProcessService.Start - begin");
+
         string captureExe = Path.Combine(AppContext.BaseDirectory, "Aion2Meter.Capture.exe");
+        WriteLog($"CaptureProcessService.Start - exe path: {captureExe}, exists: {File.Exists(captureExe)}");
+
         if (!File.Exists(captureExe))
         {
             OnError?.Invoke(this, $"Aion2Meter.Capture.exe 없음\n경로: {captureExe}");
@@ -43,8 +47,22 @@ public class CaptureProcessService : IDisposable
         string pipeName = $"Aion2Meter_{Guid.NewGuid():N}";
         _cts = new CancellationTokenSource();
 
-        // 모든 작업을 백그라운드로 완전히 넘김 - UI 스레드 터치 없음
+        WriteLog("CaptureProcessService.Start - launching Task.Run");
         _ = Task.Run(() => RunCaptureAsync(captureExe, pipeName, port, serverIp, _cts.Token));
+        WriteLog("CaptureProcessService.Start - Task.Run launched, returning");
+    }
+
+    private static void WriteLog(string msg)
+    {
+        try
+        {
+            string path = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Aion2Meter", "init.log");
+            System.IO.File.AppendAllText(path,
+                $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
+        }
+        catch { }
     }
 
     private async Task RunCaptureAsync(
@@ -92,7 +110,7 @@ public class CaptureProcessService : IDisposable
 
             try
             {
-                await pipe.WaitForConnectionAsync(connectCts.Token);
+                await pipe.WaitForConnectionAsync(connectCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -104,7 +122,7 @@ public class CaptureProcessService : IDisposable
             NotifyStatus("캡처 연결됨");
 
             // 파이프 읽기 루프
-            await ReadPipeAsync(pipe, ct);
+            await ReadPipeAsync(pipe, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (!_disposed)
         {
@@ -126,7 +144,7 @@ public class CaptureProcessService : IDisposable
             using var reader = new System.IO.StreamReader(pipe);
             while (!ct.IsCancellationRequested)
             {
-                string? line = await reader.ReadLineAsync(ct);
+                string? line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
                 if (line == null) break;
                 if (!string.IsNullOrWhiteSpace(line))
                     ProcessMessage(line);

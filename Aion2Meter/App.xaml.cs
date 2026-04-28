@@ -43,7 +43,7 @@ public partial class App : Application
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    bool ok = await NpcapHelper.InstallNpcapAsync();
+                    bool ok = await NpcapHelper.InstallNpcapAsync().ConfigureAwait(false);
                     if (!ok)
                         MessageBox.Show(
                             "Npcap 설치에 실패했습니다.\nhttps://npcap.com 에서 직접 설치해주세요.\n\n" +
@@ -74,7 +74,7 @@ public partial class App : Application
         try
         {
             var updater = new UpdateCheckerService();
-            var update = await updater.CheckForUpdateAsync();
+            var update = await updater.CheckForUpdateAsync().ConfigureAwait(false);
             if (update == null) return;
 
             _ = Current.Dispatcher.BeginInvoke(() =>
