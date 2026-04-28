@@ -33,8 +33,9 @@ public partial class MainWindow : Window
     private void InitStep2()
     {
         WriteCrashLog("InitStep2 - StartCapture", null);
-        _vm?.StartCapture();
-        WriteCrashLog("InitStep2 - Done", null);
+        // 테스트: 캡처 시작 없이 UI만 확인
+        // _vm?.StartCapture();
+        WriteCrashLog("InitStep2 - Done (capture disabled for test)", null);
     }
 
     private static void WriteCrashLog(string step, Exception? ex)
