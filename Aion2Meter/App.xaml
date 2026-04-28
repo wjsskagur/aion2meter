@@ -6,7 +6,6 @@
     <Application.Resources>
         <ResourceDictionary>
 
-            <!-- 전역 Converter 등록 (모든 XAML에서 StaticResource로 사용 가능) -->
             <converters:PercentToWidthConverter x:Key="PercentToWidth"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
             <converters:LocalPlayerColorConverter x:Key="LocalPlayerColor"/>
@@ -15,30 +14,20 @@
             <converters:DamageFormatter x:Key="DamageFormat"/>
             <converters:PercentFormatter x:Key="PercentFormat"/>
 
-            <!-- ── 색상 팔레트 ── -->
-            <Color x:Key="BackgroundColor">#1A1A2E</Color>      <!-- 딥 네이비 -->
-            <Color x:Key="PanelColor">#16213E</Color>           <!-- 패널 배경 -->
-            <Color x:Key="AccentColor">#E94560</Color>          <!-- 강조색 (빨강계) -->
-            <Color x:Key="AccentBlueColor">#0F3460</Color>      <!-- 보조 강조 -->
-            <Color x:Key="BarColor">#E94560</Color>             <!-- DPS 바 색상 -->
-            <Color x:Key="LocalBarColor">#4CAF50</Color>        <!-- 본인 DPS 바 -->
-            <Color x:Key="TextPrimaryColor">#FFFFFF</Color>
+            <Color x:Key="BackgroundColor">#1A1A2E</Color>
+            <Color x:Key="PanelColor">#16213E</Color>
+            <Color x:Key="AccentColor">#E94560</Color>
             <Color x:Key="TextSecondaryColor">#A0A0B0</Color>
             <Color x:Key="BorderColor">#2A2A4A</Color>
 
             <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
             <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}"/>
             <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
-            <SolidColorBrush x:Key="BarBrush" Color="{StaticResource BarColor}"/>
-            <SolidColorBrush x:Key="LocalBarBrush" Color="{StaticResource LocalBarColor}"/>
-            <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}"/>
             <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}"/>
             <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
 
-            <!-- ── 전역 폰트 ── -->
             <FontFamily x:Key="GameFont">Malgun Gothic, Segoe UI</FontFamily>
 
-            <!-- ── 버튼 기본 스타일 ── -->
             <Style x:Key="IconButton" TargetType="Button">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -50,9 +39,12 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="border" Background="{TemplateBinding Background}"
-                                    CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="4"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
@@ -60,7 +52,8 @@
                                     <Setter Property="Foreground" Value="White"/>
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="border" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                    <Setter TargetName="border" Property="Background"
+                                            Value="{StaticResource AccentBrush}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

@@ -15,7 +15,7 @@ namespace Aion2Meter.Services;
 ///
 /// GitHub API는 인증 없이 분당 60회 요청 가능 → 앱 시작 시 1회만 호출이므로 충분
 /// </summary>
-public class UpdateCheckerService
+public class UpdateCheckerService : IDisposable
 {
     // 본인 GitHub 계정명/레포명으로 변경
     private const string GITHUB_OWNER = "wjsskagur";
@@ -23,22 +23,23 @@ public class UpdateCheckerService
     private const string API_URL =
         $"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest";
 
-    private static readonly HttpClient _http = new()
+    private readonly HttpClient _http;
+
+    public UpdateCheckerService()
     {
-        DefaultRequestHeaders =
+        _http = new HttpClient
         {
-            // GitHub API 필수 헤더: User-Agent 없으면 403
-            { "User-Agent", "Aion2Meter-UpdateChecker" },
-            { "Accept", "application/vnd.github+json" }
-        },
-        Timeout = TimeSpan.FromSeconds(5) // 업데이트 체크가 앱 실행을 블로킹하지 않도록
-    };
+            Timeout = TimeSpan.FromSeconds(5)
+        };
+        _http.DefaultRequestHeaders.Add("User-Agent", "Aion2Meter-UpdateChecker");
+        _http.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+    }
 
     public record UpdateInfo(
         string LatestVersion,
         string CurrentVersion,
-        string ReleaseUrl,       // GitHub Release 페이지 URL
-        string DownloadUrl,      // Setup.exe 직접 다운로드 URL
+        string ReleaseUrl,
+        string DownloadUrl,
         string ReleaseNotes
     );
 
@@ -154,13 +155,12 @@ public class UpdateCheckerService
 
     private static bool IsNewerVersion(string latest, string current)
     {
-        // 4자리(1.0.1.1)와 3자리(1.0.1) 혼용 대응
-        // 3자리를 4자리로 맞춰서 비교: "1.0.1" → "1.0.1.0"
         static Version Normalize(string v)
         {
             var parts = v.Split('.');
+            // parts 배열을 다시 만들어야 Length가 바뀜
             while (parts.Length < 4)
-                v += ".0";
+                parts = (v += ".0").Split('.');
             return Version.TryParse(v, out var ver) ? ver : new Version(0, 0, 0, 0);
         }
 
@@ -185,4 +185,6 @@ public class UpdateCheckerService
         [property: System.Text.Json.Serialization.JsonPropertyName("browser_download_url")]
         string BrowserDownloadUrl
     );
+
+    public void Dispose() => _http.Dispose();
 }

@@ -28,12 +28,16 @@
             <!-- 제목 -->
             <TextBlock Grid.Row="0" Text="⚙ 설정"
                        FontSize="14" FontWeight="Bold"
+                       FontFamily="{StaticResource GameFont}"
                        Foreground="{StaticResource AccentBrush}"
                        Margin="0,0,0,16"/>
 
             <!-- 항상 위 -->
             <Grid Grid.Row="1" Margin="0,0,0,10">
-                <TextBlock Text="항상 최상위" VerticalAlignment="Center"/>
+                <TextBlock Text="항상 최상위"
+                           FontFamily="{StaticResource GameFont}"
+                           Foreground="White"
+                           VerticalAlignment="Center"/>
                 <CheckBox HorizontalAlignment="Right"
                           IsChecked="{Binding Settings.AlwaysOnTop}"/>
             </Grid>
@@ -45,8 +49,11 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0">
-                    <TextBlock Text="투명도"/>
+                    <TextBlock Text="투명도"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="White"/>
                     <TextBlock HorizontalAlignment="Right"
+                               FontFamily="{StaticResource GameFont}"
                                Text="{Binding Settings.Opacity, StringFormat={}{0:P0}}"
                                Foreground="{StaticResource TextSecondaryBrush}"/>
                 </Grid>
@@ -64,8 +71,11 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0">
-                    <TextBlock Text="창 너비"/>
+                    <TextBlock Text="창 너비"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="White"/>
                     <TextBlock HorizontalAlignment="Right"
+                               FontFamily="{StaticResource GameFont}"
                                Text="{Binding Settings.WindowWidth, StringFormat={}{0:F0}px}"
                                Foreground="{StaticResource TextSecondaryBrush}"/>
                 </Grid>
@@ -76,52 +86,17 @@
                         Foreground="{StaticResource AccentBrush}"/>
             </Grid>
 
-            <!-- 행 높이 -->
+            <!-- 서버 IP -->
             <Grid Grid.Row="4" Margin="0,0,0,10">
                 <Grid.RowDefinitions>
                     <RowDefinition/>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
-                <Grid Grid.Row="0">
-                    <TextBlock Text="행 높이"/>
-                    <TextBlock HorizontalAlignment="Right"
-                               Text="{Binding Settings.RowHeight, StringFormat={}{0:F0}px}"
-                               Foreground="{StaticResource TextSecondaryBrush}"/>
-                </Grid>
-                <Slider Grid.Row="1" Margin="0,4,0,0"
-                        Minimum="18" Maximum="40"
-                        Value="{Binding Settings.RowHeight}"
-                        TickFrequency="1" IsSnapToTickEnabled="True"
-                        Foreground="{StaticResource AccentBrush}"/>
-            </Grid>
-
-            <!-- 폰트 크기 배율 -->
-            <Grid Grid.Row="5" Margin="0,0,0,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-                <Grid Grid.Row="0">
-                    <TextBlock Text="폰트 크기"/>
-                    <TextBlock HorizontalAlignment="Right"
-                               Text="{Binding Settings.FontScale, StringFormat={}{0:P0}}"
-                               Foreground="{StaticResource TextSecondaryBrush}"/>
-                </Grid>
-                <Slider Grid.Row="1" Margin="0,4,0,0"
-                        Minimum="0.8" Maximum="1.4"
-                        Value="{Binding Settings.FontScale}"
-                        TickFrequency="0.1" IsSnapToTickEnabled="True"
-                        Foreground="{StaticResource AccentBrush}"/>
-            </Grid>
-
-            <!-- 서버 IP -->
-            <Grid Grid.Row="6" Margin="0,0,0,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="서버 IP (비워두면 자동감지)"
-                           FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                <TextBlock Grid.Row="0"
+                           Text="서버 IP (비워두면 자동감지)"
+                           FontSize="11"
+                           FontFamily="{StaticResource GameFont}"
+                           Foreground="{StaticResource TextSecondaryBrush}"/>
                 <TextBox Grid.Row="1" Margin="0,4,0,0"
                          Text="{Binding Settings.ServerIp}"
                          Background="#0F1F3D"
@@ -131,35 +106,70 @@
                          FontFamily="Consolas"/>
             </Grid>
 
+            <!-- 서버 포트 -->
+            <Grid Grid.Row="5" Margin="0,0,0,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0"
+                           Text="서버 포트 (기본: 2106)"
+                           FontSize="11"
+                           FontFamily="{StaticResource GameFont}"
+                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                <TextBox Grid.Row="1" Margin="0,4,0,0"
+                         Text="{Binding Settings.AionPort}"
+                         Background="#0F1F3D"
+                         Foreground="White"
+                         BorderBrush="{StaticResource BorderBrush}"
+                         Padding="6,4"
+                         FontFamily="Consolas"/>
+            </Grid>
+
             <!-- Npcap 상태 -->
-            <Border Grid.Row="7" Margin="0,0,0,16"
+            <Border Grid.Row="6" Margin="0,0,0,16"
                     Background="#0D1B3E" CornerRadius="4" Padding="8,6">
                 <Grid>
-                    <TextBlock Text="Npcap 상태" FontSize="11"/>
+                    <TextBlock Text="Npcap 상태"
+                               FontSize="11"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="White"/>
                     <TextBlock x:Name="NpcapStatus"
                                HorizontalAlignment="Right"
-                               FontSize="11" FontWeight="Bold"/>
+                               FontSize="11" FontWeight="Bold"
+                               FontFamily="{StaticResource GameFont}"/>
                 </Grid>
             </Border>
 
             <!-- 버튼 -->
-            <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="취소" Width="70" Height="28" Margin="0,0,8,0"
+            <StackPanel Grid.Row="7" Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button Content="취소" Width="70" Height="28"
+                        Margin="0,0,8,0"
                         Style="{StaticResource IconButton}"
+                        Foreground="White"
                         Click="CancelButton_Click"/>
                 <Button Content="저장" Width="70" Height="28"
-                        Background="{StaticResource AccentBrush}"
-                        Foreground="White" BorderThickness="0"
-                        Click="SaveButton_Click" Cursor="Hand">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border Background="{TemplateBinding Background}"
-                                    CornerRadius="4">
-                                <ContentPresenter HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"/>
-                            </Border>
-                        </ControlTemplate>
-                    </Button.Template>
+                        Cursor="Hand"
+                        Click="SaveButton_Click">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}"
+                                                CornerRadius="4">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
                 </Button>
             </StackPanel>
         </Grid>

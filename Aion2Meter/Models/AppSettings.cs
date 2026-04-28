@@ -12,7 +12,7 @@ public class AppSettings
     public string? ServerIp { get; set; } = null;
 
     /// <summary>아이온2 서버 포트 (패킷 필터링용, 실제 포트로 수정 필요)</summary>
-    public int AionPort { get; set; } = 2106;
+    public int AionPort { get; set; } = 13328;
 
     /// <summary>창 너비 (240 ~ 600)</summary>
     public double WindowWidth { get; set; } = 320;

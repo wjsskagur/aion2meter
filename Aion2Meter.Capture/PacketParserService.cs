@@ -4,167 +4,547 @@ using System.Text;
 namespace Aion2Meter.Capture;
 
 /// <summary>
-/// 아이온2 게임 프로토콜 파서.
-/// TCP 스트림을 게임 메시지 단위로 재조합하고 OpCode별로 파싱.
-/// 모든 메서드는 동기 → async 오버헤드 없음, ref struct 제약 없음.
+/// 아이온2 패킷 파서.
+/// TK-open-public/Aion2-Dps-Meter 프로젝트 분석 기반.
+///
+/// 패킷 구조:
+/// - VarInt(길이) + 2바이트 OpCode + 데이터
+/// - 0xFF 0xFF 마커가 있으면 LZ4 압축
+/// - TCP 시퀀스 번호 기반 재조합 필요
+///
+/// OpCode:
+/// - 0x04 0x38: 일반 데미지
+/// - 0x05 0x38: DoT 데미지
+/// - 0x33 0x36: 자신 닉네임
+/// - 0x44 0x36: 타인 닉네임
+/// - 0x00 0x8D: 보스 HP
+/// - 0x21 0x8D: 전투 시작/종료
 /// </summary>
 public class PacketParserService
 {
-    private const ushort OPCODE_ATTACK       = 0x0015;
-    private const ushort OPCODE_SKILL_DAMAGE = 0x0051;
-    private const ushort OPCODE_DOT_DAMAGE   = 0x0089;
-    private const ushort OPCODE_ENTITY_INFO  = 0x0021;
-    private const ushort OPCODE_BOSS_HP      = 0x0033;
+    private readonly ConcurrentDictionary<int, string> _entityNames = new();
+    private static readonly Dictionary<long, string> _skillNames = new();
+    private static bool _skillsLoaded = false;
 
-    private readonly byte[] _buffer = new byte[65536];
-    private int _bufferLen = 0;
-    private readonly ConcurrentDictionary<uint, string> _entityNames = new();
+    private static void EnsureSkillsLoaded()
+    {
+        if (_skillsLoaded) return;
+        _skillsLoaded = true;
+        try
+        {
+            // Capture.exe 옆 Resources 폴더 또는 상위 프로젝트 Resources 폴더
+            var candidates = new[]
+            {
+                System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "skills.json"),
+                System.IO.Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+                    "Aion2Meter", "Resources", "skills.json"),
+            };
+            var path = candidates.FirstOrDefault(System.IO.File.Exists);
+            if (path == null) return;
+
+            var json = System.IO.File.ReadAllText(path);
+            var items = System.Text.Json.JsonDocument.Parse(json).RootElement;
+            foreach (var item in items.EnumerateArray())
+            {
+                long code = item.GetProperty("code").GetInt64();
+                string name = item.GetProperty("name").GetString() ?? "";
+                _skillNames[code] = name;
+            }
+        }
+        catch { }
+    }
+
+    private static string GetSkillNameInternal(long skillId)
+    {
+        EnsureSkillsLoaded();
+        if (_skillNames.TryGetValue(skillId, out var n)) return n;
+        if (_skillNames.TryGetValue(skillId / 10, out n)) return n;
+        if (_skillNames.TryGetValue(skillId / 100, out n)) return n;
+        return $"Skill_{skillId}";
+    }
 
     public event Action<object>? OnDamageEvent;
-    public event Action<(uint entityId, string name)>? OnEntityInfoEvent;
+    public event Action<(uint entityId, string name, bool isLocalPlayer)>? OnEntityInfoEvent;
     public event Action<(uint bossId, string bossName, long currentHp, long maxHp)>? OnBossHpEvent;
 
-    private static string GetSkillName(uint skillId) => skillId switch
-    {
-        0 => "일반 공격",
-        _ => $"Skill_{skillId}"
-    };
+    // TCP 스트림 재조합 버퍼
+    private readonly byte[] _streamBuffer = new byte[1024 * 1024]; // 1MB
+    private int _streamLen = 0;
 
-    public void ParsePacket(byte[] data)
-    {
-        if (_bufferLen + data.Length > _buffer.Length)
-            _bufferLen = 0;
+    // TCP 시퀀스 재조합
+    private long _nextExpectedSeq = -1;
+    private readonly SortedDictionary<long, byte[]> _holdBuffer = new();
 
-        Buffer.BlockCopy(data, 0, _buffer, _bufferLen, data.Length);
-        _bufferLen += data.Length;
+    private readonly object _feedLock = new();
+
+    /// <summary>TCP 시퀀스 번호와 함께 패킷 처리 (순서 보장)</summary>
+    public void FeedPacket(long seqNum, byte[] data)
+    {
+        lock (_feedLock)
+        {
+            if (_nextExpectedSeq == -1)
+                _nextExpectedSeq = seqNum;
+
+            _holdBuffer[seqNum] = data;
+
+            while (_holdBuffer.Count > 0)
+            {
+                var firstSeq = _holdBuffer.Keys.First();
+
+                if (firstSeq == _nextExpectedSeq)
+                {
+                    var chunk = _holdBuffer[firstSeq];
+                    _holdBuffer.Remove(firstSeq);
+                    _nextExpectedSeq = (_nextExpectedSeq + chunk.Length) & 0xFFFFFFFFL;
+                    ProcessChunk(chunk);
+                }
+                else if (firstSeq < _nextExpectedSeq)
+                {
+                    _holdBuffer.Remove(firstSeq);
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// <summary>시퀀스 재조합 없이 직접 처리 (단순 모드)</summary>
+    public void ParsePacket(byte[] data) => ProcessChunk(data);
+
+    private void ProcessChunk(byte[] chunk)
+    {
+        // 버퍼에 추가
+        if (_streamLen + chunk.Length > _streamBuffer.Length)
+            _streamLen = 0;
+
+        Buffer.BlockCopy(chunk, 0, _streamBuffer, _streamLen, chunk.Length);
+        _streamLen += chunk.Length;
 
         int offset = 0;
-        while (offset < _bufferLen)
+        while (offset < _streamLen)
         {
-            if (_bufferLen - offset < 4) break;
+            if (_streamLen - offset < 2) break;
 
-            ushort msgLen = ReadUInt16(_buffer, offset);
-            if (msgLen < 4 || msgLen > 8192) { offset++; continue; }
-            if (_bufferLen - offset < msgLen) break;
+            var lengthInfo = ReadVarInt(_streamBuffer, offset);
+            if (lengthInfo.value == 0) { offset++; continue; }
+            if (lengthInfo.value < 0) { _streamLen = 0; break; }
 
-            ushort opCode = ReadUInt16(_buffer, offset + 2);
-            var msgData = new ArraySegment<byte>(_buffer, offset + 4, msgLen - 4);
-            ProcessMessage(opCode, msgData);
-            offset += msgLen;
+            // TK 공식: realLength = vi_val + vi_len - 4
+            int realLength = lengthInfo.value + lengthInfo.length - 4;
+            if (realLength <= 0) { _streamLen = 0; break; }
+            if (_streamLen - offset < realLength) break;
+
+            var packet = new byte[realLength];
+            Buffer.BlockCopy(_streamBuffer, offset, packet, 0, realLength);
+            OnPacketReceived(packet);
+            offset += realLength;
         }
 
+        // 처리된 데이터 제거
         if (offset > 0)
         {
-            int remaining = _bufferLen - offset;
+            int remaining = _streamLen - offset;
             if (remaining > 0)
-                Buffer.BlockCopy(_buffer, offset, _buffer, 0, remaining);
-            _bufferLen = remaining;
+                Buffer.BlockCopy(_streamBuffer, offset, _streamBuffer, 0, remaining);
+            _streamLen = remaining;
         }
     }
 
-    private void ProcessMessage(ushort opCode, ArraySegment<byte> data)
+    private void OnPacketReceived(byte[] packet)
     {
-        switch (opCode)
+        if (packet.Length < 3) return;
+
+        var lengthInfo = ReadVarInt(packet);
+        if (lengthInfo.value < 0) return;
+
+        int offset = lengthInfo.length;
+        if (offset >= packet.Length) return;
+
+        bool extraFlag = (packet[offset] >= 0xF0 && packet[offset] < 0xFF);
+
+        // LZ4 압축 패킷 확인
+        if (extraFlag)
         {
-            case OPCODE_ATTACK:
-            case OPCODE_SKILL_DAMAGE:
-                ParseDamage(opCode, data, isCriticalEnabled: true);
-                break;
-            case OPCODE_DOT_DAMAGE:
-                ParseDamage(opCode, data, isCriticalEnabled: false);
-                break;
-            case OPCODE_ENTITY_INFO:
-                ParseEntityInfo(data);
-                break;
-            case OPCODE_BOSS_HP:
-                ParseBossHp(data);
-                break;
+            if (offset + 2 < packet.Length &&
+                packet[offset + 1] == 0xFF && packet[offset + 2] == 0xFF)
+            {
+                DecompressAndProcess(packet, offset, true);
+                return;
+            }
         }
+        else
+        {
+            if (offset + 1 < packet.Length &&
+                packet[offset] == 0xFF && packet[offset + 1] == 0xFF)
+            {
+                DecompressAndProcess(packet, offset, false);
+                return;
+            }
+        }
+
+        // OpCode 로깅 (닉네임 패킷 디버깅용)
+        if (offset + 1 < packet.Length)
+        {
+            byte op1 = packet[offset], op2 = packet[offset + 1];
+            if ((op1 == 0x33 || op1 == 0x44) && op2 == 0x36)
+                Console.WriteLine($"[NICK_PKT] op=0x{op1:X2}{op2:X2} len={packet.Length} hex={BitConverter.ToString(packet, 0, Math.Min(24, packet.Length))}");
+        }
+
+        var li = new VarIntResult(lengthInfo.value, lengthInfo.length);
+        ParseNicknameOwn(packet, li);
+        ParseNicknameOther(packet, li);
+        if (ParseDamage(packet, extraFlag)) return;
+        if (ParseDoT(packet, extraFlag)) return;
+        if (ParseBossHp(packet, li, extraFlag)) return;
     }
 
-    private void ParseDamage(ushort opCode, ArraySegment<byte> data, bool isCriticalEnabled)
+    private void DecompressAndProcess(byte[] packet, int headerLength, bool extraFlag)
     {
-        int minSize = isCriticalEnabled ? 17 : 16;
-        if (data.Count < minSize) return;
+        try
+        {
+            int offset = headerLength + 2;
+            if (extraFlag) offset++;
 
-        var arr = data.Array!;
-        int off = data.Offset;
+            if (offset + 4 > packet.Length) return;
+            int originLength = ReadInt32LE(packet, offset);
+            offset += 4;
 
-        uint attackerId = ReadUInt32(arr, off);
-        uint targetId   = ReadUInt32(arr, off + 4);
-        uint skillId    = ReadUInt32(arr, off + 8);
-        int  damage     = ReadInt32(arr,  off + 12);
-        byte flags      = isCriticalEnabled ? arr[off + 16] : (byte)0;
+            var restored = new byte[originLength];
+            int decoded = LZ4Decompress(packet, offset, packet.Length - offset, restored, 0, originLength);
+            if (decoded < 0) return;
 
-        if (damage <= 0) return;
+            int innerOffset = 0;
+            while (innerOffset < restored.Length)
+            {
+                var li = ReadVarInt(restored, innerOffset);
+                if (li.value == 0) { innerOffset++; continue; }
+                if (li.value < 0) break;
+
+                int realLen = li.value + li.length - 4;
+                if (realLen <= 0) break;
+                if (innerOffset + realLen > restored.Length) break;
+
+                var innerPacket = new byte[realLen];
+                Buffer.BlockCopy(restored, innerOffset, innerPacket, 0, realLen);
+                OnPacketReceived(innerPacket);
+                innerOffset += realLen;
+            }
+        }
+        catch { }
+    }
+
+    private bool ParseDamage(byte[] packet, bool extraFlag)
+    {
+        var li = ReadVarInt(packet);
+        if (li.length < 0) return false;
+        int offset = li.length;
+        if (extraFlag) offset++;
+        if (offset + 2 >= packet.Length) return false;
+
+        if (packet[offset] != 0x04) return false;
+        if (packet[offset + 1] != 0x38) return false;
+        offset += 2;
+
+        var targetInfo = ReadVarInt(packet, offset);
+        if (targetInfo.length < 0) return false;
+        offset += targetInfo.length;
+
+        var switchInfo = ReadVarInt(packet, offset);
+        if (switchInfo.length < 0) return false;
+        offset += switchInfo.length;
+
+        var flagInfo = ReadVarInt(packet, offset);
+        if (flagInfo.length < 0) return false;
+        offset += flagInfo.length;
+
+        var actorInfo = ReadVarInt(packet, offset);
+        if (actorInfo.length < 0) return false;
+        offset += actorInfo.length;
+
+        if (offset + 5 >= packet.Length) return false;
+
+        int skillCode = ReadInt32LE(packet, offset);
+        offset += 5;
+
+        var typeInfo = ReadVarInt(packet, offset);
+        if (typeInfo.length < 0) return false;
+        offset += typeInfo.length;
+
+        int andResult = switchInfo.value & 0x0F;
+        int skip = andResult switch
+        {
+            4 => 8,
+            5 => 12,
+            6 => 10,
+            7 => 14,
+            _ => -1
+        };
+        if (skip < 0) return false;
+        offset += skip;
+
+        var unknownInfo = ReadVarInt(packet, offset);
+        if (unknownInfo.length < 0) return false;
+        offset += unknownInfo.length;
+
+        var damageInfo = ReadVarInt(packet, offset);
+        if (damageInfo.length < 0) return false;
+
+        if (actorInfo.value == targetInfo.value) return false;
+        if (damageInfo.value <= 0 || damageInfo.value >= 10_000_000) return true;
+
+        string attackerName = _entityNames.TryGetValue(actorInfo.value, out var an)
+            ? an : $"플레이어_{actorInfo.value % 1000:D3}";
+        string targetName = _entityNames.TryGetValue(targetInfo.value, out var tn)
+            ? tn : $"플레이어_{targetInfo.value % 1000:D3}";
 
         OnDamageEvent?.Invoke(new
         {
-            type         = "damage",
-            attackerId,
-            attackerName = _entityNames.GetValueOrDefault(attackerId, $"플레이어_{attackerId % 1000:D3}"),
-            targetId,
-            targetName   = _entityNames.GetValueOrDefault(targetId,   $"플레이어_{targetId   % 1000:D3}"),
-            skillId,
-            skillName    = GetSkillName(skillId),
-            damage,
-            isCritical   = isCriticalEnabled && (flags & 0x01) != 0,
-            isDot        = opCode == OPCODE_DOT_DAMAGE
+            type = "damage",
+            attackerId = (uint)actorInfo.value,
+            attackerName,
+            targetId = (uint)targetInfo.value,
+            targetName,
+            skillId = (uint)skillCode,
+            skillName = GetSkillNameInternal(skillCode),
+            damage = (long)damageInfo.value,
+            isCritical = false,
+            isDot = false
         });
+        return true;
     }
 
-    private void ParseEntityInfo(ArraySegment<byte> data)
+    private bool ParseDoT(byte[] packet, bool extraFlag)
     {
-        if (data.Count < 6) return;
+        var li = ReadVarInt(packet);
+        if (li.length < 0) return false;
+        int offset = li.length;
+        if (extraFlag) offset++;
+        if (offset + 2 >= packet.Length) return false;
 
-        var arr = data.Array!;
-        int off = data.Offset;
+        if (packet[offset] != 0x05) return false;
+        if (packet[offset + 1] != 0x38) return false;
+        offset += 2;
 
-        uint entityId = ReadUInt32(arr, off);
-        byte nameLen  = arr[off + 4];
-        if (nameLen == 0 || data.Count < 5 + nameLen) return;
+        var targetInfo = ReadVarInt(packet, offset);
+        if (targetInfo.length < 0) return false;
+        offset += targetInfo.length;
 
-        string name = Encoding.UTF8.GetString(arr, off + 5, nameLen);
-        _entityNames[entityId] = name;
-        OnEntityInfoEvent?.Invoke((entityId, name));
+        if (offset >= packet.Length) return false;
+        var flagByte = packet[offset];
+        if ((flagByte & 0x02) == 0) return true;
+        offset++;
+
+        var actorInfo = ReadVarInt(packet, offset);
+        if (actorInfo.length < 0) return false;
+        if (actorInfo.value == targetInfo.value) return false;
+        offset += actorInfo.length;
+
+        var unknownInfo = ReadVarInt(packet, offset);
+        if (unknownInfo.length < 0) return false;
+        offset += unknownInfo.length;
+
+        if (offset + 4 >= packet.Length) return false;
+        int skillCode = ReadInt32LE(packet, offset);
+        offset += 4;
+
+        var damageInfo = ReadVarInt(packet, offset);
+        if (damageInfo.length < 0 || damageInfo.value <= 0) return false;
+
+        string attackerName = _entityNames.TryGetValue(actorInfo.value, out var an)
+            ? an : $"플레이어_{actorInfo.value % 1000:D3}";
+
+        OnDamageEvent?.Invoke(new
+        {
+            type = "damage",
+            attackerId = (uint)actorInfo.value,
+            attackerName,
+            targetId = (uint)targetInfo.value,
+            targetName = _entityNames.TryGetValue(targetInfo.value, out var tn) ? tn : $"플레이어_{targetInfo.value % 1000:D3}",
+            skillId = (uint)skillCode,
+            skillName = GetSkillNameInternal(skillCode),
+            damage = (long)damageInfo.value,
+            isCritical = false,
+            isDot = true
+        });
+        return true;
     }
 
-    private void ParseBossHp(ArraySegment<byte> data)
+    private void ParseNicknameOwn(byte[] packet, VarIntResult lengthInfo)
     {
-        if (data.Count < 21) return;
+        int offset = lengthInfo.length;
+        if (offset + 2 >= packet.Length) return;
+        if (packet[offset] != 0x33) return;
+        if (packet[offset + 1] != 0x36) return;
+        offset += 2;
 
-        var arr = data.Array!;
-        int off = data.Offset;
+        var userInfo = ReadVarInt(packet, offset);
+        if (userInfo.length < 0) return;
+        offset += userInfo.length;
 
-        uint bossId    = ReadUInt32(arr, off);
-        long currentHp = ReadInt64(arr,  off + 4);
-        long maxHp     = ReadInt64(arr,  off + 12);
-        byte nameLen   = arr[off + 20];
+        if (offset + 10 >= packet.Length) return;
 
-        string bossName = (nameLen > 0 && data.Count >= 21 + nameLen)
-            ? Encoding.UTF8.GetString(arr, off + 21, nameLen)
-            : _entityNames.GetValueOrDefault(bossId, $"Boss_{bossId}");
+        // 0x07 구분자 찾기
+        int spliterIdx = -1;
+        for (int i = 0; i < Math.Min(10, packet.Length - offset); i++)
+        {
+            if (packet[offset + i] == 0x07) { spliterIdx = i; break; }
+        }
+        if (spliterIdx == -1) return;
+        offset += spliterIdx + 1;
 
-        if (!string.IsNullOrEmpty(bossName))
-            _entityNames[bossId] = bossName;
+        var nameLengthInfo = ReadVarInt(packet, offset);
+        if (nameLengthInfo.length < 0 || nameLengthInfo.value < 1 || nameLengthInfo.value > 71) return;
+        offset += nameLengthInfo.length;
+        if (offset + nameLengthInfo.value > packet.Length) return;
 
-        OnBossHpEvent?.Invoke((bossId, bossName, currentHp, maxHp));
+        string name = Encoding.UTF8.GetString(packet, offset, nameLengthInfo.value);
+        if (!IsValidNickname(name)) return;
+
+        _entityNames[userInfo.value] = name;
+        OnEntityInfoEvent?.Invoke(((uint)userInfo.value, name, true)); // 자신
     }
 
-    private static ushort ReadUInt16(byte[] buf, int offset) =>
-        (ushort)(buf[offset] | (buf[offset + 1] << 8));
+    private void ParseNicknameOther(byte[] packet, VarIntResult lengthInfo)
+    {
+        int offset = lengthInfo.length;
+        if (offset + 2 >= packet.Length) return;
+        if (packet[offset] != 0x44) return;
+        if (packet[offset + 1] != 0x36) return;
+        offset += 2;
 
-    private static uint ReadUInt32(byte[] buf, int offset) =>
-        (uint)(buf[offset] | (buf[offset + 1] << 8) |
-               (buf[offset + 2] << 16) | (buf[offset + 3] << 24));
+        var userInfo = ReadVarInt(packet, offset);
+        if (userInfo.length < 0) return;
+        offset += userInfo.length;
 
-    private static int ReadInt32(byte[] buf, int offset) =>
-        buf[offset] | (buf[offset + 1] << 8) |
-        (buf[offset + 2] << 16) | (buf[offset + 3] << 24);
+        var u1 = ReadVarInt(packet, offset); if (u1.length < 0) return; offset += u1.length;
+        var u2 = ReadVarInt(packet, offset); if (u2.length < 0) return; offset += u2.length;
 
-    private static long ReadInt64(byte[] buf, int offset) =>
-        (long)buf[offset]             | ((long)buf[offset + 1] << 8)  |
-        ((long)buf[offset + 2] << 16) | ((long)buf[offset + 3] << 24) |
-        ((long)buf[offset + 4] << 32) | ((long)buf[offset + 5] << 40) |
-        ((long)buf[offset + 6] << 48) | ((long)buf[offset + 7] << 56);
+        if (offset + 2 >= packet.Length) return;
+        offset++;
+
+        // 닉네임 찾기 (최대 5바이트 오프셋 시도)
+        for (int i = 0; i < 5; i++)
+        {
+            int tryOffset = offset + i;
+            if (tryOffset >= packet.Length) break;
+            var nli = ReadVarInt(packet, tryOffset);
+            if (nli.length <= 0 || nli.value < 1 || nli.value > 71) continue;
+            int nameStart = tryOffset + nli.length;
+            if (nameStart + nli.value > packet.Length) continue;
+            string candidate = Encoding.UTF8.GetString(packet, nameStart, nli.value);
+            if (!IsValidNickname(candidate)) continue;
+
+            _entityNames[userInfo.value] = candidate;
+            OnEntityInfoEvent?.Invoke(((uint)userInfo.value, candidate, false)); // 타인
+            return;
+        }
+    }
+
+    private bool ParseBossHp(byte[] packet, VarIntResult lengthInfo, bool extraFlag)
+    {
+        int offset = lengthInfo.length;
+        if (extraFlag) offset++;
+        if (offset + 2 >= packet.Length) return false;
+        if (packet[offset] != 0x00) return false;
+        if (packet[offset + 1] != 0x8D) return false;
+        offset += 2;
+
+        var mobIdInfo = ReadVarInt(packet, offset);
+        if (mobIdInfo.length < 0) return false;
+        offset += mobIdInfo.length;
+
+        // 3개 VarInt 스킵
+        for (int i = 0; i < 3; i++)
+        {
+            var vi = ReadVarInt(packet, offset);
+            if (vi.length < 0) return false;
+            offset += vi.length;
+        }
+
+        if (offset + 4 > packet.Length) return false;
+        long currentHp = ReadUInt32LE(packet, offset);
+
+        string bossName = _entityNames.TryGetValue(mobIdInfo.value, out var bn) ? bn : $"Boss_{mobIdInfo.value}";
+        OnBossHpEvent?.Invoke(((uint)mobIdInfo.value, bossName, currentHp, 0));
+        return true;
+    }
+
+    // ── LZ4 순수 C# 구현 ────────────────────────────────────────────
+    private static int LZ4Decompress(byte[] src, int srcOff, int srcLen, byte[] dst, int dstOff, int dstLen)
+    {
+        int sEnd = srcOff + srcLen;
+        int dEnd = dstOff + dstLen;
+        int si = srcOff, di = dstOff;
+
+        while (si < sEnd)
+        {
+            int token = src[si++];
+            int litLen = (token >> 4) & 0xF;
+            if (litLen == 15)
+            {
+                int extra;
+                do { extra = src[si++]; litLen += extra; } while (extra == 255);
+            }
+
+            if (di + litLen > dEnd) return -1;
+            Buffer.BlockCopy(src, si, dst, di, litLen);
+            si += litLen; di += litLen;
+
+            if (si >= sEnd) break;
+
+            int matchOff = src[si] | (src[si + 1] << 8);
+            si += 2;
+            int matchLen = (token & 0xF) + 4;
+            if (matchLen - 4 == 15)
+            {
+                int extra;
+                do { extra = src[si++]; matchLen += extra; } while (extra == 255);
+            }
+
+            int matchSrc = di - matchOff;
+            if (matchSrc < dstOff) return -1;
+            if (di + matchLen > dEnd) return -1;
+            for (int k = 0; k < matchLen; k++)
+                dst[di++] = dst[matchSrc++];
+        }
+        return di - dstOff;
+    }
+
+    // ── 헬퍼 ────────────────────────────────────────────────────────
+    private static int ReadInt32LE(byte[] buf, int offset) =>
+        buf[offset] | (buf[offset + 1] << 8) | (buf[offset + 2] << 16) | (buf[offset + 3] << 24);
+
+    private static long ReadUInt32LE(byte[] buf, int offset) =>
+        (long)(buf[offset] | (buf[offset + 1] << 8) | (buf[offset + 2] << 16) | (buf[offset + 3] << 24)) & 0xFFFFFFFFL;
+
+    private record VarIntResult(int value, int length);
+
+    private static VarIntResult ReadVarInt(byte[] bytes, int offset = 0)
+    {
+        int value = 0, shift = 0, count = 0;
+        while (true)
+        {
+            if (offset + count >= bytes.Length) return new(-1, -1);
+            int b = bytes[offset + count++] & 0xFF;
+            value |= (b & 0x7F) << shift;
+            if ((b & 0x80) == 0) return new(value, count);
+            shift += 7;
+            if (shift >= 32) return new(-1, -1);
+        }
+    }
+
+    private static bool IsValidNickname(string s)
+    {
+        if (string.IsNullOrEmpty(s) || s.Length > 71) return false;
+        // 최소 한 글자 이상의 한글 또는 영문 포함
+        bool hasKorOrEng = s.Any(c =>
+            (c >= '\uAC00' && c <= '\uD7A3') ||
+            (c >= 'a' && c <= 'z') ||
+            (c >= 'A' && c <= 'Z'));
+        // 제어문자만 없으면 OK (몬스터 이름은 공백/특수문자 포함 가능)
+        bool noControl = s.All(c => c >= 0x20);
+        return hasKorOrEng && noControl;
+    }
 }

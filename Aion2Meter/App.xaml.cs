@@ -20,6 +20,8 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
+        GameDataService.Load();
+
         try
         {
             // Npcap 체크는 백그라운드로 - async void 블로킹 방지
@@ -42,13 +44,13 @@ public partial class App : Application
     {
         if (NpcapHelper.IsNpcapInstalled()) return;
 
-        // UI 스레드에서 팝업 표시
         bool install = false;
         Current.Dispatcher.Invoke(() =>
         {
             var result = MessageBox.Show(
-                "Npcap이 필요합니다.\n\n지금 설치하시겠습니까?\n\n" +
-                "⚠ Install Npcap in WinPcap API-compatible Mode 체크 필수",
+                "Aion2 DPS Meter를 사용하려면 Npcap이 필요합니다.\n\n" +
+                "지금 설치하시겠습니까?\n" +
+                "(https://npcap.com 에서 자동 다운로드)",
                 "Npcap 필요", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             install = result == MessageBoxResult.Yes;
         });
@@ -60,17 +62,27 @@ public partial class App : Application
         {
             Current.Dispatcher.Invoke(() =>
                 MessageBox.Show(
-                    "Npcap 설치 실패.\nhttps://npcap.com 에서 직접 설치하세요.\n\n" +
-                    "⚠ WinPcap API-compatible Mode 체크 필수",
+                    "Npcap 설치에 실패했습니다.\nhttps://npcap.com 에서 직접 설치 후 앱을 재시작해주세요.",
                     "설치 실패", MessageBoxButton.OK, MessageBoxImage.Error));
+            return;
         }
+
+        // 설치 완료 후 드라이버 로드 대기 (3초)
+        await Task.Delay(3000).ConfigureAwait(false);
+
+        // 캡처 재시작
+        Current.Dispatcher.Invoke(() =>
+        {
+            var mainWindow = Current.MainWindow as Views.MainWindow;
+            mainWindow?.RetryCapture();
+        });
     }
 
     private static async Task CheckUpdateAsync()
     {
         try
         {
-            var updater = new UpdateCheckerService();
+            using var updater = new UpdateCheckerService();
             var update = await updater.CheckForUpdateAsync().ConfigureAwait(false);
             if (update == null) return;
 

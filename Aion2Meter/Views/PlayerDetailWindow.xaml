@@ -1,0 +1,148 @@
+<Window x:Class="Aion2Meter.Views.PlayerDetailWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="스킬 상세"
+        Width="420" Height="480"
+        Background="Transparent"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+
+    <Border Background="{StaticResource BackgroundBrush}"
+            CornerRadius="8"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1">
+        <Grid Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 헤더 -->
+            <Grid Grid.Row="0" Margin="0,0,0,8" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="PlayerNameText"
+                               FontSize="14" FontWeight="Bold"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="{StaticResource AccentBrush}"/>
+                    <TextBlock x:Name="PlayerDpsText"
+                               FontSize="11" Margin="10,2,0,0"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </StackPanel>
+                <Button Content="✕" Style="{StaticResource IconButton}"
+                        HorizontalAlignment="Right" Click="CloseButton_Click"/>
+            </Grid>
+
+            <!-- 요약 -->
+            <Border Grid.Row="1" Background="{StaticResource PanelBrush}"
+                    CornerRadius="4" Padding="10,6" Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                        <TextBlock x:Name="TotalDamageText" FontSize="13" FontWeight="Bold"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="White" HorizontalAlignment="Center"/>
+                        <TextBlock Text="총 피해량" FontSize="9"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                        <TextBlock x:Name="HitCountText" FontSize="13" FontWeight="Bold"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="White" HorizontalAlignment="Center"/>
+                        <TextBlock Text="타격 횟수" FontSize="9"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                        <TextBlock x:Name="CritRateText" FontSize="13" FontWeight="Bold"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="치명타율" FontSize="9"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 스킬 목록 -->
+            <ListView Grid.Row="2" x:Name="SkillListView"
+                      Background="Transparent" BorderThickness="0"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="스킬" Width="150">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding SkillName}"
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="White" FontSize="11"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="피해량" Width="90">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding TotalDamage, StringFormat={}{0:N0}}"
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="White" FontSize="11"
+                                               HorizontalAlignment="Right"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="횟수" Width="50">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding HitCount}"
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="11" HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="평균" Width="80">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding AverageDamage, StringFormat={}{0:N0}}"
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="11" HorizontalAlignment="Right"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1A2A4A"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.ItemContainerStyle>
+            </ListView>
+
+            <!-- 닫기 버튼 -->
+            <Button Grid.Row="3" Content="닫기" Height="28" Width="80"
+                    HorizontalAlignment="Right" Margin="0,8,0,0"
+                    Style="{StaticResource IconButton}"
+                    Foreground="White" Click="CloseButton_Click"/>
+        </Grid>
+    </Border>
+</Window>

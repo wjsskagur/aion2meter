@@ -2,14 +2,244 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Aion2 Meter"
-        Width="320" Height="200"
+        Width="320" MinWidth="240" MaxWidth="600"
+        SizeToContent="Height"
+        Background="Transparent"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="Transparent"
+        WindowStartupLocation="Manual"
         Closing="Window_Closing">
-    <Border Background="#1A1A2E" CornerRadius="8">
-        <TextBlock Text="테스트" Foreground="White"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"/>
+
+    <Border Background="{StaticResource BackgroundBrush}"
+            CornerRadius="8"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 헤더 -->
+            <Border Grid.Row="0"
+                    Background="{StaticResource PanelBrush}"
+                    CornerRadius="8,8,0,0"
+                    MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <Grid Margin="10,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="⚔ AION2 METER"
+                                   FontSize="12" FontWeight="Bold"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="{StaticResource AccentBrush}"/>
+                        <Ellipse Width="7" Height="7" Margin="8,0,0,0" VerticalAlignment="Center">
+                            <Ellipse.Style>
+                                <Style TargetType="Ellipse">
+                                    <Setter Property="Fill" Value="#555555"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsInCombat}" Value="True">
+                                            <Setter Property="Fill" Value="#4CAF50"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Ellipse.Style>
+                        </Ellipse>
+                        <TextBlock Text="{Binding CombatTimer}"
+                                   FontSize="11" Margin="6,0,0,0"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="↺" ToolTip="리셋"
+                                Style="{StaticResource IconButton}"
+                                Command="{Binding ResetCommand}"
+                                FontSize="14"/>
+                        <Button Content="⚙" ToolTip="설정"
+                                Style="{StaticResource IconButton}"
+                                Click="SettingsButton_Click"
+                                FontSize="13"/>
+                        <Button Content="✕" ToolTip="종료"
+                                Style="{StaticResource IconButton}"
+                                Click="CloseButton_Click"
+                                FontSize="12"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 보스 HP -->
+            <Border Grid.Row="1"
+                    Background="#0D1B3E"
+                    Padding="10,6"
+                    Cursor="Hand"
+                    MouseLeftButtonDown="BossArea_Click"
+                    Visibility="{Binding IsInCombat, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <Grid>
+                        <TextBlock Text="{Binding BossName}"
+                                   FontSize="11" FontWeight="SemiBold"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="#FFD700"/>
+                        <TextBlock Text="{Binding BossHpText}"
+                                   FontSize="10" HorizontalAlignment="Right"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                    </Grid>
+                    <Grid Height="4" Margin="0,3,0,0">
+                        <Rectangle Fill="#2A2A4A" RadiusX="2" RadiusY="2"/>
+                        <Rectangle Fill="#E94560" RadiusX="2" RadiusY="2"
+                                   HorizontalAlignment="Left">
+                            <Rectangle.Width>
+                                <MultiBinding Converter="{StaticResource PercentToWidth}">
+                                    <Binding Path="BossHpPercent"/>
+                                    <Binding Path="ActualWidth"
+                                             RelativeSource="{RelativeSource AncestorType=Grid}"/>
+                                </MultiBinding>
+                            </Rectangle.Width>
+                        </Rectangle>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 플레이어 목록 / 대기 메시지 -->
+            <Grid Grid.Row="2">
+                <ItemsControl ItemsSource="{Binding Players}"
+                              Margin="0,4,0,4"
+                              Visibility="{Binding HasNoPlayers,
+                                  Converter={StaticResource BoolToVisibility},
+                                  ConverterParameter=Inverse}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="6,2" Cursor="Hand"
+                                  MouseLeftButtonDown="PlayerRow_Click">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="22"/>
+                                    <RowDefinition Height="4"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- 바 배경 -->
+                                <Rectangle Grid.Row="0" Fill="#0F1F3D" RadiusX="3" RadiusY="3"/>
+
+                                <!-- DPS 바 -->
+                                <Rectangle Grid.Row="0"
+                                           HorizontalAlignment="Left"
+                                           RadiusX="3" RadiusY="3"
+                                           Opacity="0.6">
+                                    <Rectangle.Width>
+                                        <MultiBinding Converter="{StaticResource PercentToWidth}">
+                                            <Binding Path="DamagePercent"/>
+                                            <Binding Path="ActualWidth"
+                                                     RelativeSource="{RelativeSource AncestorType=Grid}"/>
+                                        </MultiBinding>
+                                    </Rectangle.Width>
+                                    <Rectangle.Fill>
+                                        <SolidColorBrush Color="{Binding IsLocalPlayer,
+                                            Converter={StaticResource LocalPlayerBarColor}}"/>
+                                    </Rectangle.Fill>
+                                </Rectangle>
+
+                                <!-- 텍스트 -->
+                                <Grid Grid.Row="0" Margin="6,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="75"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Name}"
+                                               FontSize="11" FontWeight="Medium"
+                                               FontFamily="{StaticResource GameFont}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{Binding IsLocalPlayer,
+                                                   Converter={StaticResource LocalPlayerColor}}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding TotalDamage,
+                                                   Converter={StaticResource DamageFormat}}"
+                                               FontSize="10" VerticalAlignment="Center"
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               Margin="0,0,8,0"/>
+                                    <TextBlock Grid.Column="2"
+                                               FontSize="11" FontWeight="Bold"
+                                               FontFamily="{StaticResource GameFont}"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right"
+                                               Foreground="White">
+                                        <Run Text="{Binding Dps, Converter={StaticResource DpsFormat}}"/>
+                                        <Run Text=" DPS" FontSize="9"
+                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    </TextBlock>
+                                </Grid>
+
+                                <!-- 퍼센트 바 -->
+                                <Grid Grid.Row="1" Margin="0,1">
+                                    <Rectangle Fill="#1A1A3A" RadiusX="2" RadiusY="2"/>
+                                    <Rectangle HorizontalAlignment="Left"
+                                               RadiusX="2" RadiusY="2"
+                                               Fill="{StaticResource AccentBrush}"
+                                               Opacity="0.8">
+                                        <Rectangle.Width>
+                                            <MultiBinding Converter="{StaticResource PercentToWidth}">
+                                                <Binding Path="DamagePercent"/>
+                                                <Binding Path="ActualWidth"
+                                                         RelativeSource="{RelativeSource AncestorType=Grid}"/>
+                                            </MultiBinding>
+                                        </Rectangle.Width>
+                                    </Rectangle>
+                                    <TextBlock Text="{Binding DamagePercent,
+                                                   Converter={StaticResource PercentFormat}}"
+                                               FontSize="8" HorizontalAlignment="Right"
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 대기 메시지 -->
+                <Border Padding="10,20"
+                        Visibility="{Binding HasNoPlayers,
+                            Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="{Binding StatusMessage}"
+                               HorizontalAlignment="Center"
+                               FontSize="11"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Border>
+            </Grid>
+
+            <!-- 푸터 -->
+            <Border Grid.Row="3"
+                    Background="{StaticResource PanelBrush}"
+                    CornerRadius="0,0,8,8"
+                    Padding="10,4">
+                <Grid>
+                    <TextBlock Text="{Binding StatusMessage}"
+                               FontSize="9"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <TextBlock Text="v1.0 "
+                                   FontSize="9"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Text="{Binding IsCapturing}"
+                                   FontSize="9"
+                                   FontFamily="{StaticResource GameFont}"
+                                   Foreground="{StaticResource AccentBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+        </Grid>
     </Border>
 </Window>

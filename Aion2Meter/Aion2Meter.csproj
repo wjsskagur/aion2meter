@@ -1,7 +1,6 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- Windows WPF 앱으로 지정. net8.0-windows 는 WPF/WinForms 전용 TFM -->
     <TargetFramework>net8.0-windows</TargetFramework>
     <OutputType>WinExe</OutputType>
     <UseWPF>true</UseWPF>
@@ -9,29 +8,37 @@
     <AssemblyName>Aion2Meter</AssemblyName>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- C# 12 명시: .NET 8 기본값이지만 wpftmp 프로젝트에서 버전 불일치 방지 -->
     <LangVersion>12</LangVersion>
-
-    <!-- 배포 설정 -->
-    <!-- PublishSingleFile 비활성화: SharpPcap 네이티브 DLL(wpcap.dll 등)이 -->
-    <!-- 단일 exe 번들에서 제대로 추출되지 않아 런타임 로드 실패 발생 -->
-    <!-- 대신 폴더 전체를 NSIS로 묶어서 배포 -->
-    <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
     <PublishReadyToRun>true</PublishReadyToRun>
-
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- SharpPcap: .NET용 Npcap/WinPcap 래퍼. 패킷 캡처의 사실상 표준 라이브러리 -->
     <PackageReference Include="SharpPcap" Version="6.3.0" />
-    <!-- PacketDotNet: SharpPcap과 함께 쓰는 패킷 파싱 라이브러리 (Ethernet/IP/TCP 레이어 파싱) -->
     <PackageReference Include="PacketDotNet" Version="1.4.7" />
-    <!-- Newtonsoft.Json: 설정 저장/로드용 -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <Target Name="CopyCaptureExe" AfterTargets="Build">
+    <MSBuild Projects="..\Aion2Meter.Capture\Aion2Meter.Capture.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=win-x64"/>
+    <ItemGroup>
+      <CaptureFiles Include="..\Aion2Meter.Capture\bin\$(Platform)\$(Configuration)\net8.0-windows\win-x64\**\*.*"/>
+    </ItemGroup>
+    <Copy SourceFiles="@(CaptureFiles)"
+          DestinationFolder="$(OutputPath)%(RecursiveDir)"
+          SkipUnchangedFiles="true"
+          ContinueOnError="true"/>
+  </Target>
+
+  <ItemGroup>
+    <Content Include="Resources\skills.json" CopyToOutputDirectory="PreserveNewest"/>
+    <Content Include="Resources\mobs.json" CopyToOutputDirectory="PreserveNewest"/>
   </ItemGroup>
 
 </Project>

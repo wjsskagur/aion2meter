@@ -70,6 +70,8 @@ public class MainViewModel : BaseViewModel
     public ObservableCollection<PlayerStats> Players => _tracker.Players;
     public bool HasNoPlayers => _tracker.Players.Count == 0;
     public ObservableCollection<CombatSession> History => _tracker.History;
+    public CombatSession? CurrentSession => _tracker.CurrentSession;
+    public double ElapsedSeconds => _tracker.CurrentSession?.ElapsedSeconds ?? 0;
     public AppSettings Settings => _settings.Settings;
 
     // FontScale 기반 동적 폰트 크기
@@ -116,16 +118,29 @@ public class MainViewModel : BaseViewModel
     private void OnCombatEventReceived(object? s, CombatEvent e) =>
         _tracker.ProcessEvent(e);
 
-    private void OnEntityInfoReceived(object? s, (uint entityId, string name) e) =>
+    private void OnEntityInfoReceived(object? s, (uint entityId, string name, bool isLocalPlayer) e)
+    {
+        if (e.isLocalPlayer)
+            _tracker.LocalPlayerId = e.entityId;
         _tracker.UpdateEntityName(e.entityId, e.name);
+    }
+
+    private long _bossMaxHp = 0;
 
     private void OnBossHpReceived(object? s, (uint bossId, string bossName, long currentHp, long maxHp) e)
     {
         App.Current?.Dispatcher.BeginInvoke(() =>
         {
-            BossName      = e.bossName;
-            BossHpPercent = e.maxHp > 0 ? (double)e.currentHp / e.maxHp : 0;
-            BossHpText    = $"{FormatNumber(e.currentHp)} / {FormatNumber(e.maxHp)}";
+            BossName = e.bossName;
+
+            // maxHp 추적 (처음 받은 최댓값 유지)
+            if (e.maxHp > 0) _bossMaxHp = e.maxHp;
+            else if (e.currentHp > _bossMaxHp) _bossMaxHp = e.currentHp;
+
+            BossHpPercent = _bossMaxHp > 0 ? (double)e.currentHp / _bossMaxHp : 1.0;
+            BossHpText    = _bossMaxHp > 0
+                ? $"{FormatNumber(e.currentHp)} / {FormatNumber(_bossMaxHp)}"
+                : FormatNumber(e.currentHp);
             IsInCombat    = e.currentHp > 0;
 
             if (e.currentHp <= 0)
@@ -136,12 +151,8 @@ public class MainViewModel : BaseViewModel
     private void OnCaptureError(object? s, string msg) =>
         App.Current?.Dispatcher.BeginInvoke(() =>
         {
-            StatusMessage = msg.Split('\n')[0]; // 첫 줄만 상태바에
+            StatusMessage = msg.Split('\n')[0];
             IsCapturing = false;
-            // 상세 오류는 MessageBox로 표시
-            System.Windows.MessageBox.Show(msg, "캡처 오류",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Warning);
         });
 
     private void OnCaptureStatus(object? s, string msg) =>
@@ -197,7 +208,13 @@ public class MainViewModel : BaseViewModel
         }
     }
 
-    private void OnReset() => _tracker.Reset();
+    private void OnReset()
+    {
+        _tracker.Reset();
+        // 캡처 중이 아니면 재시도
+        if (!IsCapturing)
+            StartCapture();
+    }
 
     private void OnSaveSettings()
     {

@@ -20,6 +20,9 @@ public class CombatTrackerService : IDisposable
     private bool _disposed = false;
     private long _totalPartyDamageCache = 0;
 
+    // 닉네임 캐시: 패킷 수신 순서와 무관하게 이름을 보존
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, string> _nameCache = new();
+
     public uint LocalPlayerId { get; set; }
 
     public ObservableCollection<PlayerStats> Players { get; } = new();
@@ -55,7 +58,7 @@ public class CombatTrackerService : IDisposable
                 _currentSession = new CombatSession
                 {
                     BossId    = evt.TargetId,
-                    BossName  = evt.TargetName,
+                    BossName  = _nameCache.TryGetValue(evt.TargetId, out var bossName) ? bossName : evt.TargetName,
                     StartTime = DateTime.Now
                 };
                 _totalPartyDamageCache = 0;
@@ -71,12 +74,16 @@ public class CombatTrackerService : IDisposable
                 session.Players[evt.AttackerId] = new PlayerStats
                 {
                     EntityId      = evt.AttackerId,
-                    Name          = evt.AttackerName,
+                    Name          = _nameCache.TryGetValue(evt.AttackerId, out var cachedName) ? cachedName : evt.AttackerName,
                     IsLocalPlayer = evt.AttackerId == LocalPlayerId
                 };
 
             var player = session.Players[evt.AttackerId];
-            player.Name = evt.AttackerName;
+            // 캐시에 실제 이름이 있으면 사용, 없으면 이벤트 이름 사용 (플레이어_XXX 덮어쓰기 방지)
+            if (_nameCache.TryGetValue(evt.AttackerId, out var realName))
+                player.Name = realName;
+            else if (!player.Name.StartsWith("플레이어_"))
+                player.Name = evt.AttackerName;
             player.TotalDamage += evt.Damage;
             player.HitCount++;
             if (evt.IsCritical) player.CritCount++;
@@ -103,10 +110,14 @@ public class CombatTrackerService : IDisposable
     public void UpdateEntityName(uint entityId, string name)
     {
         if (_disposed) return;
+        _nameCache[entityId] = name;
         lock (_lock)
         {
             if (_currentSession?.Players.TryGetValue(entityId, out var player) == true)
                 player.Name = name;
+            // 보스 이름도 업데이트
+            if (_currentSession != null && _currentSession.BossId == entityId)
+                _currentSession.BossName = name;
         }
     }
 

@@ -48,6 +48,29 @@ public partial class MainWindow : Window
         }
     }
 
+    public void RetryCapture()
+    {
+        _vm?.StartCapture();
+    }
+
+    private void PlayerRow_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.DataContext is Models.PlayerStats player && _vm != null)
+        {
+            var win = new PlayerDetailWindow(player, _vm.ElapsedSeconds);
+            win.Owner = this;
+            win.Show();
+        }
+    }
+
+    private void BossArea_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_vm?.CurrentSession == null) return;
+        var win = new BossDetailWindow(_vm.CurrentSession);
+        win.Owner = this;
+        win.Show();
+    }
+
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
     public void ApplySettings()

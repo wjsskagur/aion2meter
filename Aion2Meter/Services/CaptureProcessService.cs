@@ -18,7 +18,7 @@ public class CaptureProcessService : IDisposable
     private bool _disposed = false;
 
     public event EventHandler<CombatEvent>? OnCombatEvent;
-    public event EventHandler<(uint entityId, string name)>? OnEntityInfo;
+    public event EventHandler<(uint entityId, string name, bool isLocalPlayer)>? OnEntityInfo;
     public event EventHandler<(uint bossId, string bossName, long currentHp, long maxHp)>? OnBossHp;
     public event EventHandler<string>? OnError;
     public event EventHandler<string>? OnStatus;
@@ -28,67 +28,157 @@ public class CaptureProcessService : IDisposable
     /// <summary>
     /// 즉시 반환. 캡처 프로세스 실행 및 파이프 연결은 백그라운드에서 처리.
     /// </summary>
-    public void Start(int port = 2106, string? serverIp = null)
+    public void Start(int port = 13328, string? serverIp = null)
     {
         if (_disposed) return;
         StopInternal();
 
         WriteLog("CaptureProcessService.Start - begin");
 
-        string captureExe = Path.Combine(AppContext.BaseDirectory, "Aion2Meter.Capture.exe");
-        WriteLog($"CaptureProcessService.Start - exe path: {captureExe}, exists: {File.Exists(captureExe)}");
+        // serverIp를 비워두면 Capture 프로세스가 포트만으로 필터링
+        // → 던전마다 서버 IP가 바뀌어도 자동 대응
+        WriteLog($"port={port} serverIp={serverIp ?? "auto(port only)"}");
 
-        if (!File.Exists(captureExe))
+        // 실행 파일 경로 후보 (dotnet run / Rider / 배포 모두 지원)
+        var candidates = new[]
         {
-            OnError?.Invoke(this, $"Aion2Meter.Capture.exe 없음\n경로: {captureExe}");
+            // 1. 현재 실행 파일과 같은 폴더 (배포 환경)
+            Path.Combine(AppContext.BaseDirectory, "Aion2Meter.Capture.exe"),
+            // 2. dotnet run 시 임시 폴더 → 프로세스 실행 파일 경로 기반
+            Path.Combine(
+                Path.GetDirectoryName(Environment.ProcessPath ?? "") ?? "",
+                "Aion2Meter.Capture.exe"),
+            // 3. 현재 디렉터리
+            Path.Combine(Directory.GetCurrentDirectory(), "Aion2Meter.Capture.exe"),
+            // 4. 로컬 Debug 빌드 경로 (dotnet run 시 AppContext.BaseDirectory = bin\Debug\net8.0-windows\win-x64\)
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+                "Aion2Meter.Capture", "bin", "Debug", "net8.0-windows", "win-x64",
+                "Aion2Meter.Capture.exe"),
+        };
+
+        string? captureExe = candidates
+            .Select(p => Path.GetFullPath(p))
+            .FirstOrDefault(File.Exists);
+
+        WriteLog($"Candidates: {string.Join(", ", candidates.Select(p => $"{p}={File.Exists(p)}"))}");
+        WriteLog($"Selected: {captureExe ?? "NONE"}");
+
+        if (captureExe == null)
+        {
+            OnError?.Invoke(this, $"Aion2Meter.Capture.exe 없음\n검색 경로:\n{string.Join("\n", candidates)}");
             return;
         }
 
         string pipeName = $"Aion2Meter_{Guid.NewGuid():N}";
         _cts = new CancellationTokenSource();
 
-        WriteLog("CaptureProcessService.Start - launching Task.Run");
-        _ = Task.Run(() => RunCaptureAsync(captureExe, pipeName, port, serverIp, _cts.Token));
-        WriteLog("CaptureProcessService.Start - Task.Run launched, returning");
+        // Capture.exe 옆에 .dll도 있으면 dotnet으로 실행 (framework-dependent 빌드)
+        string captureDll = Path.ChangeExtension(captureExe, ".dll");
+        bool useDotnet = File.Exists(captureDll) && !IsNativeExecutable(captureExe);
+
+        WriteLog($"useDotnet={useDotnet}, dll={captureDll}, dllExists={File.Exists(captureDll)}");
+
+        _ = Task.Run(() => RunCaptureAsync(captureExe, captureDll, useDotnet, pipeName, port, serverIp, _cts.Token));
     }
 
     private static void WriteLog(string msg)
     {
         try
         {
-            string path = System.IO.Path.Combine(
+            string dir = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Aion2Meter", "init.log");
+                "Aion2Meter");
+            System.IO.Directory.CreateDirectory(dir);
+            string path = System.IO.Path.Combine(dir, "init.log");
             System.IO.File.AppendAllText(path,
                 $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n");
         }
         catch { }
     }
 
-    private async Task RunCaptureAsync(
-        string captureExe, string pipeName, int port, string? serverIp, CancellationToken ct)
+    /// <summary>
+    /// 13328 포트로 연결된 TCP 연결에서 서버 IP 자동 감지.
+    /// 던전마다 서버 IP가 바뀌므로 매 캡처 시작 시 호출.
+    /// </summary>
+    private static string? DetectAionServerIp(int port)
     {
+        try
+        {
+            var tcpConns = System.Net.NetworkInformation.IPGlobalProperties
+                .GetIPGlobalProperties()
+                .GetActiveTcpConnections();
+
+            // 해당 포트로 ESTABLISHED 연결 중 루프백이 아닌 첫 번째 IP
+            foreach (var conn in tcpConns)
+            {
+                if (conn.RemoteEndPoint.Port != port) continue;
+                if (conn.State != System.Net.NetworkInformation.TcpState.Established) continue;
+                var ip = conn.RemoteEndPoint.Address.ToString();
+                if (ip == "127.0.0.1" || ip == "::1") continue;
+                WriteLog($"DetectAionServerIp: auto-detected {ip}:{port}");
+                return ip;
+            }
+
+            WriteLog($"DetectAionServerIp: no connection to port {port} found, capturing all IPs");
+        }
+        catch (Exception ex)
+        {
+            WriteLog($"DetectAionServerIp error: {ex.Message}");
+        }
+        return null;
+    }
+
+    private static bool IsNativeExecutable(string exePath)
+    {
+        // PE 헤더 확인 - SelfContained exe는 네이티브 실행 가능
+        try
+        {
+            using var fs = File.OpenRead(exePath);
+            var buf = new byte[2];
+            fs.Read(buf, 0, 2);
+            return buf[0] == 0x4D && buf[1] == 0x5A; // MZ header
+        }
+        catch { return true; }
+    }
+
+    private async Task RunCaptureAsync(
+        string captureExe, string captureDll, bool useDotnet,
+        string pipeName, int port, string? serverIp, CancellationToken ct)
+    {
+        string args = serverIp != null
+            ? $"\"{pipeName}\" {port} {serverIp}"
+            : $"\"{pipeName}\" {port}";
+
+        string fileName;
+        string arguments;
+
+        if (useDotnet)
+        {
+            fileName  = "dotnet";
+            arguments = $"\"{captureDll}\" {args}";
+        }
+        else
+        {
+            fileName  = captureExe;
+            arguments = args;
+        }
+
+        WriteLog($"RunCaptureAsync: fileName={fileName} args={arguments}");
         NamedPipeServerStream? pipe = null;
         Process? process = null;
 
         try
         {
-            // 파이프 서버 오픈
             pipe = new NamedPipeServerStream(
                 pipeName, PipeDirection.In, 1,
                 PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-
-            // 캡처 프로세스 실행
-            string args = serverIp != null
-                ? $"\"{pipeName}\" {port} {serverIp}"
-                : $"\"{pipeName}\" {port}";
 
             process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName  = captureExe,
-                    Arguments = args,
+                    FileName        = fileName,
+                    Arguments       = arguments,
                     UseShellExecute = false,
                     CreateNoWindow  = true
                 },
@@ -115,7 +205,7 @@ public class CaptureProcessService : IDisposable
             catch (OperationCanceledException)
             {
                 if (!ct.IsCancellationRequested)
-                    NotifyError("캡처 프로세스 접속 타임아웃 - Npcap WinPcap 호환 모드 확인");
+                    NotifyError("캡처 초기화 타임아웃\n↺ 버튼을 눌러 재시도하세요");
                 return;
             }
 
@@ -182,9 +272,10 @@ public class CaptureProcessService : IDisposable
                     });
                     break;
                 case "entity":
-                    OnEntityInfo?.Invoke(this, (
-                        root.GetProperty("entityId").GetUInt32(),
-                        root.GetProperty("name").GetString() ?? ""));
+                    var entityId = root.GetProperty("entityId").GetUInt32();
+                    var entityName = root.GetProperty("name").GetString() ?? "";
+                    var isLocal = root.TryGetProperty("isLocalPlayer", out var localProp) && localProp.GetBoolean();
+                    OnEntityInfo?.Invoke(this, (entityId, entityName, isLocal));
                     break;
                 case "bossHp":
                     OnBossHp?.Invoke(this, (
