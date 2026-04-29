@@ -123,7 +123,10 @@ public class UpdateCheckerService : IDisposable
                 UseShellExecute = true
             });
 
+            // 인스톨러 실행 후 앱 종료 - fire-and-forget 의도적 사용
+#pragma warning disable CS4014
             App.Current.Dispatcher.BeginInvoke(() => App.Current.Shutdown());
+#pragma warning restore CS4014
             return true;
         }
         catch

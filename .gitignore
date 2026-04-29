@@ -28,6 +28,7 @@ installer/npcap-installer.exe   # 라이선스 문제로 레포에 포함하지 
 # ── 앱 설정 (로컬 저장 파일) ──────────────────────────────
 *.json
 !appsettings*.json              # appsettings는 예외 (프로젝트 설정)
+!**/Resources/*.json            # 게임 데이터 파일은 예외 (skills.json, mobs.json)
 
 # ── OS ────────────────────────────────────────────────────
 .DS_Store
