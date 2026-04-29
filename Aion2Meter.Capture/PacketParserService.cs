@@ -584,6 +584,8 @@ public class PacketParserService
         }
         return -1;
     }
+
+    private bool ParseBossHp(byte[] packet, VarIntResult lengthInfo, bool extraFlag)
     {
         int offset = lengthInfo.length;
         if (extraFlag) offset++;
