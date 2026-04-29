@@ -42,29 +42,10 @@ aion2meter/
 build.bat
 ```
 
-### 배포 방법
-
-버전 태그를 push하면 자동으로 빌드 + Setup.exe + Release가 생성됩니다.
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Actions 탭에서 진행 확인 → 완료되면 Releases에 `Aion2Meter-Setup.exe` 자동 업로드
-
 ---
 
-## 패킷 분석 가이드
-
-`PacketParserService.cs`의 OpCode와 오프셋을 실제 값으로 수정 필요.
-
-Wireshark로 아이온2 트래픽 캡처 후 반복 패턴 분석 → 수정 후 태그 push → 자동 배포.
-
----
 
 ## 주의사항
 
 - 게임사 공식 API 아님, 패킷 분석 기반
-- 패킷 암호화 적용 시 동작 불가
 - 관리자 권한 실행 필수
