@@ -63,12 +63,99 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportButton_Click(object sender, RoutedEventArgs e)
+    {
+        var session = _vm?.CurrentSession;
+        if (session == null || session.Players.Count == 0)
+        {
+            MessageBox.Show("내보낼 전투 데이터가 없습니다.", "알림",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        ExportSession(session);
+    }
+
+    public static void ExportSession(Models.CombatSession session)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"보스: {session.BossName}");
+        sb.AppendLine($"시작: {session.StartTime:yyyy-MM-dd HH:mm:ss}");
+        double elapsed = session.ElapsedSeconds;
+        int m = (int)(elapsed / 60), s = (int)(elapsed % 60);
+        sb.AppendLine($"시간: {m:D2}:{s:D2}");
+        sb.AppendLine($"총 피해량: {session.TotalPartyDamage:N0}");
+        sb.AppendLine();
+        sb.AppendLine("플레이어,피해량,DPS,기여%,최대단타,직접피해,DoT피해,타격수,치명타율");
+
+        foreach (var p in session.Players.Values.OrderByDescending(x => x.TotalDamage))
+        {
+            double dps = elapsed > 0 ? p.TotalDamage / elapsed : 0;
+            double pct = session.TotalPartyDamage > 0
+                ? (double)p.TotalDamage / session.TotalPartyDamage * 100 : 0;
+            sb.AppendLine($"{p.Name},{p.TotalDamage},{dps:F0},{pct:F1}%," +
+                          $"{p.MaxHit},{p.DirectDamage},{p.DotDamage},{p.HitCount},{p.CritRate:P1}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("=== 스킬 상세 ===");
+        foreach (var p in session.Players.Values.OrderByDescending(x => x.TotalDamage))
+        {
+            sb.AppendLine($"\n[{p.Name}]");
+            sb.AppendLine("스킬,DoT,피해량,횟수,최대,평균,치명타율");
+            foreach (var sk in p.Skills.Values.OrderByDescending(x => x.TotalDamage))
+                sb.AppendLine($"{sk.SkillName},{(sk.IsDot ? "Y" : "")},{sk.TotalDamage}," +
+                              $"{sk.HitCount},{sk.MaxHit},{sk.AverageDamage:F0},{sk.CritRate:P1}");
+        }
+
+        try
+        {
+            string path = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                $"Aion2Meter_{session.BossName}_{session.StartTime:yyyyMMdd_HHmmss}.csv");
+            System.IO.File.WriteAllText(path, sb.ToString(), System.Text.Encoding.UTF8);
+            MessageBox.Show($"저장됨:\n{path}", "내보내기 완료",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"저장 실패: {ex.Message}", "오류",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void HistoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm == null) return;
+        var win = new HistoryWindow(_vm.History) { Owner = this };
+        win.Show();
+    }
+
     private void BossArea_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
+        if (e.ClickCount == 2)
+        {
+            // 더블클릭: 보스 이름 클립보드 복사
+            if (_vm?.CurrentSession != null)
+            {
+                var session = _vm.CurrentSession;
+                var elapsed = session.ElapsedSeconds;
+                string text = $"[{session.BossName}] {(int)(elapsed/60):D2}:{(int)(elapsed%60):D2}\n";
+                foreach (var p in session.Players.Values.OrderByDescending(x => x.TotalDamage))
+                {
+                    double dps = elapsed > 0 ? p.TotalDamage / elapsed : 0;
+                    double pct = session.TotalPartyDamage > 0
+                        ? (double)p.TotalDamage / session.TotalPartyDamage * 100 : 0;
+                    text += $"{p.Name}: {dps:N0} DPS ({pct:F1}%)\n";
+                }
+                Clipboard.SetText(text);
+                MessageBox.Show("클립보드에 복사됨", "복사 완료",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            return;
+        }
         if (_vm?.CurrentSession == null) return;
-        var win = new BossDetailWindow(_vm.CurrentSession);
-        win.Owner = this;
-        win.Show();
+        var detailWin = new BossDetailWindow(_vm.CurrentSession) { Owner = this };
+        detailWin.Show();
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
@@ -80,6 +167,8 @@ public partial class MainWindow : Window
         Width   = s.WindowWidth;
         Opacity = s.Opacity;
         Topmost = s.AlwaysOnTop;
+        // 컴팩트 모드: 행 높이 조정
+        _vm.NotifyChanged(nameof(MainViewModel.RowHeight));
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)

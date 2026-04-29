@@ -1,7 +1,7 @@
 <Window x:Class="Aion2Meter.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="설정" Width="320" SizeToContent="Height"
+        Title="설정" Width="300" SizeToContent="Height"
         Background="Transparent"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -23,7 +23,6 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- 제목 -->
@@ -31,54 +30,36 @@
                        FontSize="14" FontWeight="Bold"
                        FontFamily="{StaticResource GameFont}"
                        Foreground="{StaticResource AccentBrush}"
-                       Margin="0,0,0,16"/>
+                       Margin="0,0,0,14"/>
 
-            <!-- 항상 위 -->
-            <Grid Grid.Row="1" Margin="0,0,0,10">
-                <TextBlock Text="항상 최상위"
+            <!-- ── 화면 ───────────────────────────────── -->
+            <StackPanel Grid.Row="1" Margin="0,0,0,14">
+                <TextBlock Text="화면"
+                           FontSize="10" FontWeight="Bold"
                            FontFamily="{StaticResource GameFont}"
-                           Foreground="White"
-                           VerticalAlignment="Center"/>
-                <CheckBox HorizontalAlignment="Right"
-                          IsChecked="{Binding Settings.AlwaysOnTop}"/>
-            </Grid>
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,0,0,8"/>
 
-            <!-- 필터: 파티원 기준 -->
-            <Grid Grid.Row="2" Margin="0,0,0,6">
-                <StackPanel>
-                    <TextBlock Text="딜 표시 필터"
-                               FontSize="11" FontWeight="Bold"
+                <!-- 항상 최상위 -->
+                <Grid Margin="0,0,0,8">
+                    <TextBlock Text="항상 최상위"
                                FontFamily="{StaticResource GameFont}"
-                               Foreground="{StaticResource AccentBrush}"
-                               Margin="0,0,0,6"/>
-                    <Grid Margin="0,0,0,4">
-                        <TextBlock Text="파티원만 표시 (이름 확인된 플레이어)"
-                                   FontFamily="{StaticResource GameFont}"
-                                   FontSize="11"
-                                   Foreground="White"
-                                   VerticalAlignment="Center"/>
-                        <CheckBox HorizontalAlignment="Right"
-                                  IsChecked="{Binding Settings.FilterByKnownPlayers}"/>
-                    </Grid>
-                    <Grid>
-                        <TextBlock Text="보스 타겟 기준 (전체 공격자)"
-                                   FontFamily="{StaticResource GameFont}"
-                                   FontSize="11"
-                                   Foreground="White"
-                                   VerticalAlignment="Center"/>
-                        <CheckBox HorizontalAlignment="Right"
-                                  IsChecked="{Binding Settings.FilterByBossTarget}"/>
-                    </Grid>
-                </StackPanel>
-            </Grid>
+                               Foreground="White" VerticalAlignment="Center"/>
+                    <CheckBox HorizontalAlignment="Right"
+                              IsChecked="{Binding Settings.AlwaysOnTop}"/>
+                </Grid>
 
-            <!-- 투명도 -->
-            <Grid Grid.Row="3" Margin="0,0,0,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-                <Grid Grid.Row="0">
+                <!-- 컴팩트 모드 -->
+                <Grid Margin="0,0,0,8">
+                    <TextBlock Text="컴팩트 모드"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="White" VerticalAlignment="Center"/>
+                    <CheckBox HorizontalAlignment="Right"
+                              IsChecked="{Binding Settings.CompactMode}"/>
+                </Grid>
+
+                <!-- 투명도 -->
+                <Grid Margin="0,0,0,4">
                     <TextBlock Text="투명도"
                                FontFamily="{StaticResource GameFont}"
                                Foreground="White"/>
@@ -87,20 +68,14 @@
                                Text="{Binding Settings.Opacity, StringFormat={}{0:P0}}"
                                Foreground="{StaticResource TextSecondaryBrush}"/>
                 </Grid>
-                <Slider Grid.Row="1" Margin="0,4,0,0"
-                        Minimum="0.1" Maximum="1.0"
+                <Slider Minimum="0.1" Maximum="1.0"
                         Value="{Binding Settings.Opacity}"
                         TickFrequency="0.1"
-                        Foreground="{StaticResource AccentBrush}"/>
-            </Grid>
+                        Foreground="{StaticResource AccentBrush}"
+                        Margin="0,0,0,8"/>
 
-            <!-- 창 너비 -->
-            <Grid Grid.Row="4" Margin="0,0,0,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-                <Grid Grid.Row="0">
+                <!-- 창 너비 -->
+                <Grid Margin="0,0,0,4">
                     <TextBlock Text="창 너비"
                                FontFamily="{StaticResource GameFont}"
                                Foreground="White"/>
@@ -109,55 +84,101 @@
                                Text="{Binding Settings.WindowWidth, StringFormat={}{0:F0}px}"
                                Foreground="{StaticResource TextSecondaryBrush}"/>
                 </Grid>
-                <Slider Grid.Row="1" Margin="0,4,0,0"
-                        Minimum="240" Maximum="600"
+                <Slider Minimum="240" Maximum="600"
                         Value="{Binding Settings.WindowWidth}"
                         TickFrequency="10" IsSnapToTickEnabled="True"
                         Foreground="{StaticResource AccentBrush}"/>
-            </Grid>
+            </StackPanel>
 
-            <!-- 서버 IP -->
-            <Grid Grid.Row="5" Margin="0,0,0,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0"
-                           Text="서버 IP (비워두면 자동감지)"
-                           FontSize="11"
+            <!-- ── 딜 표시 ─────────────────────────────── -->
+            <StackPanel Grid.Row="2" Margin="0,0,0,14">
+                <TextBlock Text="딜 표시"
+                           FontSize="10" FontWeight="Bold"
+                           FontFamily="{StaticResource GameFont}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,0,0,8"/>
+
+                <!-- 파티원만 표시 -->
+                <Grid Margin="0,0,0,4">
+                    <TextBlock Text="파티원만 표시"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="White" VerticalAlignment="Center"/>
+                    <CheckBox HorizontalAlignment="Right"
+                              IsChecked="{Binding Settings.FilterByKnownPlayers}"/>
+                </Grid>
+                <TextBlock Text="해제 시 보스를 공격한 모든 플레이어 표시"
+                           FontSize="10" Margin="0,0,0,8"
                            FontFamily="{StaticResource GameFont}"
                            Foreground="{StaticResource TextSecondaryBrush}"/>
-                <TextBox Grid.Row="1" Margin="0,4,0,0"
-                         Text="{Binding Settings.ServerIp}"
-                         Background="#0F1F3D"
-                         Foreground="White"
-                         BorderBrush="{StaticResource BorderBrush}"
-                         Padding="6,4"
-                         FontFamily="Consolas"/>
-            </Grid>
 
-            <!-- 서버 포트 -->
-            <Grid Grid.Row="6" Margin="0,0,0,10">
-                <Grid.RowDefinitions>
-                    <RowDefinition/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Row="0"
-                           Text="서버 포트 (기본: 2106)"
-                           FontSize="11"
+                <!-- 내 캐릭터 상단 고정 -->
+                <Grid Margin="0,0,0,8">
+                    <TextBlock Text="내 캐릭터 상단 고정"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="White" VerticalAlignment="Center"/>
+                    <CheckBox HorizontalAlignment="Right"
+                              IsChecked="{Binding Settings.PinLocalPlayer}"/>
+                </Grid>
+
+                <!-- 자동 전투 종료 -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="52"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="자동 종료 대기 (초)"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="White" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1"
+                             Text="{Binding Settings.AutoEndSeconds}"
+                             Background="#0F1F3D" Foreground="White"
+                             BorderBrush="{StaticResource BorderBrush}"
+                             Padding="4,2" FontFamily="Consolas"
+                             HorizontalContentAlignment="Center"/>
+                </Grid>
+
+                <!-- 정렬 기준 -->
+                <Grid>
+                    <TextBlock Text="정렬 기준"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="White" VerticalAlignment="Center"/>
+                    <ComboBox HorizontalAlignment="Right" Width="100"
+                              SelectedValue="{Binding Settings.SortBy}"
+                              SelectedValuePath="Tag"
+                              Background="#0F1F3D" Foreground="White"
+                              BorderBrush="{StaticResource BorderBrush}">
+                        <ComboBoxItem Content="총 피해량" Tag="TotalDamage"/>
+                        <ComboBoxItem Content="DPS" Tag="Dps"/>
+                        <ComboBoxItem Content="타격 횟수" Tag="HitCount"/>
+                    </ComboBox>
+                </Grid>
+            </StackPanel>
+
+            <!-- ── 전투 결과 자동 발송 ────────────────── -->
+            <StackPanel Grid.Row="3" Margin="0,0,0,14">
+                <TextBlock Text="전투 결과 발송"
+                           FontSize="10" FontWeight="Bold"
                            FontFamily="{StaticResource GameFont}"
-                           Foreground="{StaticResource TextSecondaryBrush}"/>
-                <TextBox Grid.Row="1" Margin="0,4,0,0"
-                         Text="{Binding Settings.AionPort}"
-                         Background="#0F1F3D"
-                         Foreground="White"
-                         BorderBrush="{StaticResource BorderBrush}"
-                         Padding="6,4"
-                         FontFamily="Consolas"/>
-            </Grid>
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,0,0,8"/>
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <CheckBox IsChecked="{Binding Settings.AutoUpload}"
+                                  IsEnabled="False"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"/>
+                        <TextBlock VerticalAlignment="Center"
+                                   FontFamily="{StaticResource GameFont}"
+                                   FontSize="11">
+                            <Run Text="자동 발송" Foreground="#666677"/>
+                            <Run Text=" (준비 중)" Foreground="#444455" FontSize="10"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
 
-            <!-- Npcap 상태 -->
-            <Border Grid.Row="7" Margin="0,0,0,16"
+            <!-- ── Npcap 상태 ──────────────────────────── -->
+            <Border Grid.Row="4" Margin="0,0,0,14"
                     Background="#0D1B3E" CornerRadius="4" Padding="8,6">
                 <Grid>
                     <TextBlock Text="Npcap 상태"
@@ -171,8 +192,8 @@
                 </Grid>
             </Border>
 
-            <!-- 버튼 -->
-            <StackPanel Grid.Row="8" Orientation="Horizontal"
+            <!-- ── 버튼 ───────────────────────────────── -->
+            <StackPanel Grid.Row="5" Orientation="Horizontal"
                         HorizontalAlignment="Right">
                 <Button Content="취소" Width="70" Height="28"
                         Margin="0,0,8,0"

@@ -64,6 +64,11 @@ jobs:
           sed -i "s|<Version>.*</Version>|<Version>${{ steps.version.outputs.VERSION }}</Version>|" \
             Aion2Meter/Aion2Meter.csproj
 
+      # ── 4-2. NuGet 패키지 복원 ────────────────────────
+      - name: Restore packages
+        shell: pwsh
+        run: dotnet restore
+
       # ── 5. dotnet publish → WPF UI ────────────────────
       - name: Publish UI
         shell: pwsh

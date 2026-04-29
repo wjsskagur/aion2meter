@@ -1,0 +1,226 @@
+<Window x:Class="Aion2Meter.Views.HistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="전투 기록"
+        Width="560" Height="560"
+        Background="Transparent"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+
+    <Border Background="{StaticResource BackgroundBrush}"
+            CornerRadius="8"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1">
+        <Grid Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 헤더 -->
+            <Grid Grid.Row="0" Margin="0,0,0,10" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <TextBlock Text="📋 전투 기록"
+                           FontSize="14" FontWeight="Bold"
+                           FontFamily="{StaticResource GameFont}"
+                           Foreground="{StaticResource AccentBrush}"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="내보내기" Style="{StaticResource IconButton}"
+                            Foreground="White" Margin="0,0,4,0"
+                            Click="ExportButton_Click"/>
+                    <Button Content="✕" Style="{StaticResource IconButton}"
+                            Click="CloseButton_Click"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- 세션 목록 / 상세 -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 세션 목록 -->
+                <ListBox Grid.Column="0" x:Name="SessionList"
+                         Background="#0D1B3E"
+                         BorderBrush="{StaticResource BorderBrush}"
+                         BorderThickness="1"
+                         SelectionChanged="SessionList_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="6,4">
+                                <TextBlock Text="{Binding BossName}"
+                                           FontFamily="{StaticResource GameFont}"
+                                           Foreground="#FFD700" FontSize="11"
+                                           FontWeight="Bold"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding StartTime, StringFormat={}{0:HH:mm}}"
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="10"/>
+                                    <TextBlock Text=" · "
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="10"/>
+                                    <TextBlock x:Name="ElapsedTxt"
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               FontSize="10">
+                                        <TextBlock.Text>
+                                            <MultiBinding StringFormat="{}{0:F0}초">
+                                                <Binding Path="ElapsedSeconds"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Foreground" Value="White"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="#1A2A4A"/>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#1A2A4A"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                </ListBox>
+
+                <!-- 상세 -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 세션 요약 -->
+                    <Border Grid.Row="0" Background="{StaticResource PanelBrush}"
+                            CornerRadius="4" Padding="10,6" Margin="0,0,0,6"
+                            x:Name="SummaryPanel">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                <TextBlock x:Name="TotalDmgTxt" FontSize="13" FontWeight="Bold"
+                                           FontFamily="{StaticResource GameFont}"
+                                           Foreground="White" HorizontalAlignment="Center"/>
+                                <TextBlock Text="총 피해량" FontSize="9"
+                                           FontFamily="{StaticResource GameFont}"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                <TextBlock x:Name="ElapsedTxtDetail" FontSize="13" FontWeight="Bold"
+                                           FontFamily="{StaticResource GameFont}"
+                                           Foreground="White" HorizontalAlignment="Center"/>
+                                <TextBlock Text="전투 시간" FontSize="9"
+                                           FontFamily="{StaticResource GameFont}"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                <TextBlock x:Name="PlayerCountTxt" FontSize="13" FontWeight="Bold"
+                                           FontFamily="{StaticResource GameFont}"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="참여 인원" FontSize="9"
+                                           FontFamily="{StaticResource GameFont}"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- 플레이어 목록 -->
+                    <ListView Grid.Row="1" x:Name="PlayerList"
+                              Background="Transparent" BorderThickness="0"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="플레이어" Width="110">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontFamily="{StaticResource GameFont}"
+                                                       Foreground="White" FontSize="11"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="피해량" Width="80">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding TotalDamage, StringFormat={}{0:N0}}"
+                                                       FontFamily="{StaticResource GameFont}"
+                                                       Foreground="White" FontSize="11"
+                                                       HorizontalAlignment="Right"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="DPS" Width="65">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Dps, StringFormat={}{0:N0}}"
+                                                       FontFamily="{StaticResource GameFont}"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       FontSize="11" HorizontalAlignment="Right"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="%" Width="45">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DamagePercent, StringFormat={}{0:P1}}"
+                                                       FontFamily="{StaticResource GameFont}"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       FontSize="10" HorizontalAlignment="Right"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="최대" Width="65">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding MaxHit, StringFormat={}{0:N0}}"
+                                                       FontFamily="{StaticResource GameFont}"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       FontSize="10" HorizontalAlignment="Right"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#1A2A4A"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                    </ListView>
+                </Grid>
+            </Grid>
+
+            <Button Grid.Row="2" Content="닫기" Height="28" Width="80"
+                    HorizontalAlignment="Right" Margin="0,8,0,0"
+                    Style="{StaticResource IconButton}"
+                    Foreground="White" Click="CloseButton_Click"/>
+        </Grid>
+    </Border>
+</Window>

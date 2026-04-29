@@ -113,7 +113,17 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="평균" Width="80">
+                        <GridViewColumn Header="최대" Width="75">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding MaxHit, StringFormat={}{0:N0}}"
+                                               FontFamily="{StaticResource GameFont}"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               FontSize="10" HorizontalAlignment="Right"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="평균" Width="75">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding AverageDamage, StringFormat={}{0:N0}}"

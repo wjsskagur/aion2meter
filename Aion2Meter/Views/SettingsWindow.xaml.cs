@@ -15,7 +15,6 @@ public partial class SettingsWindow : Window
         _vm = vm;
         DataContext = vm;
 
-        // Npcap 상태 표시
         bool installed = NpcapHelper.IsNpcapInstalled();
         NpcapStatus.Text = installed ? "✓ 설치됨" : "✗ 미설치";
         NpcapStatus.Foreground = installed

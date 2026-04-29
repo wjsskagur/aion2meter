@@ -24,6 +24,53 @@ public class PacketParserService
 {
     private readonly ConcurrentDictionary<int, string> _entityNames = new();
     private static readonly Dictionary<long, string> _skillNames = new();
+    private static readonly Dictionary<long, string> _skillClasses = new();
+
+    // 스킬 코드 앞 2자리 → 직업명
+    private static readonly Dictionary<string, string> _classByPrefix = new()
+    {
+        { "11", "검성" },
+        { "12", "수호성" },
+        { "13", "살성" },
+        { "14", "궁성" },
+        { "15", "마도성" },
+        { "16", "정령성" },
+        { "17", "치유성" },
+        { "18", "호법성" },
+    };
+
+    // entityId → 추론된 직업명
+    private readonly ConcurrentDictionary<int, string> _detectedClasses = new();
+
+    /// <summary>스킬 사용으로 직업 추론. 이름이 없는 플레이어에 적용</summary>
+    private void DetectClass(int entityId, long skillId)
+    {
+        if (_detectedClasses.ContainsKey(entityId)) return; // 이미 확정됨
+        string codeStr = skillId.ToString();
+        if (codeStr.Length != 8) return;
+        string prefix = codeStr[..2];
+        if (_classByPrefix.TryGetValue(prefix, out var className))
+            _detectedClasses[entityId] = className;
+    }
+
+    /// <summary>직업명 조회. 이름이 없으면 직업명+번호로 반환</summary>
+    public string GetDisplayName(int entityId, string fallbackName)
+    {
+        if (_entityNames.TryGetValue(entityId, out var name)) return name;
+        if (_detectedClasses.TryGetValue(entityId, out var cls))
+        {
+            // 같은 직업 ID를 오름차순 정렬 후 순번 결정 (안정적)
+            var sameIds = _detectedClasses
+                .Where(kv => kv.Value == cls)
+                .Select(kv => kv.Key)
+                .OrderBy(id => id)
+                .ToList();
+            if (sameIds.Count == 1) return cls;
+            int rank = sameIds.IndexOf(entityId) + 1;
+            return $"{cls}{rank}";
+        }
+        return fallbackName;
+    }
     private static bool _skillsLoaded = false;
 
     private static readonly Dictionary<long, (string name, bool boss)> _mobData = new();
@@ -341,10 +388,11 @@ public class PacketParserService
         if (actorInfo.value == targetInfo.value) return false;
         if (damageInfo.value <= 0 || damageInfo.value >= 10_000_000) return true;
 
-        string attackerName = _entityNames.TryGetValue(actorInfo.value, out var an)
-            ? an : $"플레이어_{actorInfo.value % 1000:D3}";
-        string targetName = _entityNames.TryGetValue(targetInfo.value, out var tn)
-            ? tn : $"플레이어_{targetInfo.value % 1000:D3}";
+        // 직업 추론 (이름 없는 플레이어용)
+        DetectClass(actorInfo.value, skillCode);
+
+        string attackerName = GetDisplayName(actorInfo.value, $"플레이어_{actorInfo.value % 1000:D3}");
+        string targetName   = GetDisplayName(targetInfo.value, $"플레이어_{targetInfo.value % 1000:D3}");
 
         OnDamageEvent?.Invoke(new
         {
@@ -399,8 +447,9 @@ public class PacketParserService
         var damageInfo = ReadVarInt(packet, offset);
         if (damageInfo.length < 0 || damageInfo.value <= 0) return false;
 
-        string attackerName = _entityNames.TryGetValue(actorInfo.value, out var an)
-            ? an : $"플레이어_{actorInfo.value % 1000:D3}";
+        DetectClass(actorInfo.value, skillCode);
+
+        string attackerName = GetDisplayName(actorInfo.value, $"플레이어_{actorInfo.value % 1000:D3}");
 
         OnDamageEvent?.Invoke(new
         {
@@ -408,7 +457,7 @@ public class PacketParserService
             attackerId = (uint)actorInfo.value,
             attackerName,
             targetId = (uint)targetInfo.value,
-            targetName = _entityNames.TryGetValue(targetInfo.value, out var tn) ? tn : $"플레이어_{targetInfo.value % 1000:D3}",
+            targetName = GetDisplayName(targetInfo.value, $"플레이어_{targetInfo.value % 1000:D3}"),
             skillId = (uint)skillCode,
             skillName = GetSkillNameInternal(skillCode),
             damage = (long)damageInfo.value,

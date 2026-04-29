@@ -30,6 +30,9 @@ public class CombatEvent
     /// <summary>치명타 여부</summary>
     public bool IsCritical { get; set; }
 
+    /// <summary>DoT(지속 피해) 여부</summary>
+    public bool IsDot { get; set; }
+
     /// <summary>이벤트 발생 시각 (DPS 계산용)</summary>
     public DateTime Timestamp { get; set; } = DateTime.Now;
 }

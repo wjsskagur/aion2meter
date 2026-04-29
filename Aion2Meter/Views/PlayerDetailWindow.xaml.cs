@@ -16,6 +16,10 @@ public partial class PlayerDetailWindow : Window
         HitCountText.Text    = player.HitCount.ToString("N0");
         CritRateText.Text    = $"{player.CritRate:P1}";
 
+        // MaxHit, DoT 분리는 툴팁으로 표시
+        var tooltip = $"최대 단타: {player.MaxHit:N0}\n직접 피해: {FormatNumber(player.DirectDamage)}\nDoT 피해: {FormatNumber(player.DotDamage)}";
+        TotalDamageText.ToolTip = tooltip;
+
         var skills = player.Skills.Values
             .OrderByDescending(s => s.TotalDamage)
             .ToList();

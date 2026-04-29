@@ -269,6 +269,7 @@ public class CaptureProcessService : IDisposable
                         SkillName    = root.GetProperty("skillName").GetString() ?? "Unknown",
                         Damage       = root.GetProperty("damage").GetInt64(),
                         IsCritical   = root.GetProperty("isCritical").GetBoolean(),
+                        IsDot        = root.TryGetProperty("isDot", out var dotProp) && dotProp.GetBoolean(),
                         Timestamp    = DateTime.Now
                     });
                     break;

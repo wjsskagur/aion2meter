@@ -27,6 +27,15 @@ public class PlayerStats
     /// <summary>치명타율 (0.0 ~ 1.0)</summary>
     public double CritRate => HitCount > 0 ? (double)CritCount / HitCount : 0;
 
+    /// <summary>단일 최대 피해량</summary>
+    public long MaxHit { get; set; }
+
+    /// <summary>일반 피해량 (DoT 제외)</summary>
+    public long DirectDamage { get; set; }
+
+    /// <summary>DoT 피해량</summary>
+    public long DotDamage { get; set; }
+
     /// <summary>
     /// 스킬별 통계 목록. 상세 보기 패널에서 사용.
     /// key: SkillId
@@ -47,4 +56,6 @@ public class SkillStats
     public int CritCount { get; set; }
     public double CritRate => HitCount > 0 ? (double)CritCount / HitCount : 0;
     public double AverageDamage => HitCount > 0 ? (double)TotalDamage / HitCount : 0;
+    public long MaxHit { get; set; }
+    public bool IsDot { get; set; }
 }

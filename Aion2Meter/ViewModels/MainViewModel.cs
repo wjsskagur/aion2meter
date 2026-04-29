@@ -14,6 +14,7 @@ public class MainViewModel : BaseViewModel
     private readonly CaptureProcessService _capture;
     private readonly CombatTrackerService _tracker;
     private readonly SettingsService _settings;
+    private readonly CombatUploadService _uploader = new();
     private System.Windows.Threading.DispatcherTimer? _timerRefresh;
 
     // ── UI 바인딩 프로퍼티 ────────────────────────────────────
@@ -74,7 +75,7 @@ public class MainViewModel : BaseViewModel
     public double ElapsedSeconds => _tracker.CurrentSession?.ElapsedSeconds ?? 0;
     public AppSettings Settings => _settings.Settings;
 
-    // FontScale 기반 동적 폰트 크기
+    public double RowHeight     => Settings.CompactMode ? 16 : (Settings.RowHeight > 0 ? Settings.RowHeight : 22);
     public double NameFontSize   => Math.Round(11 * Settings.FontScale, 1);
     public double DamageFontSize => Math.Round(10 * Settings.FontScale, 1);
     public double DpsFontSize    => Math.Round(11 * Settings.FontScale, 1);
@@ -100,6 +101,7 @@ public class MainViewModel : BaseViewModel
         _capture.OnError       += OnCaptureError;
         _capture.OnStatus      += OnCaptureStatus;
         _tracker.Players.CollectionChanged += OnPlayersChanged;
+        _tracker.OnCombatEnded += OnCombatEndedForUpload;
 
         ResetCommand         = new RelayCommand(OnReset);
         ToggleCaptureCommand = new RelayCommand(OnToggleCapture);
@@ -115,6 +117,17 @@ public class MainViewModel : BaseViewModel
     }
 
     // ── 이벤트 핸들러 ─────────────────────────────────────────
+
+    private void OnCombatEndedForUpload(object? s, CombatSession session)
+    {
+        if (!_settings.Settings.AutoUpload) return;
+        // 백그라운드로 전송 (게임 플레이 방해 없음)
+        _ = Task.Run(async () =>
+        {
+            bool ok = await _uploader.UploadAsync(session, _settings.Settings);
+            WriteLog($"Upload result: {ok}");
+        });
+    }
 
     private void OnCombatEventReceived(object? s, CombatEvent e) =>
         _tracker.ProcessEvent(e);
@@ -190,6 +203,9 @@ public class MainViewModel : BaseViewModel
         // 필터 설정 적용
         _tracker.FilterByBossTarget   = _settings.Settings.FilterByBossTarget;
         _tracker.FilterByKnownPlayers = _settings.Settings.FilterByKnownPlayers;
+        _tracker.SortBy               = _settings.Settings.SortBy;
+        _tracker.AutoEndSeconds       = _settings.Settings.AutoEndSeconds;
+        _tracker.PinLocalPlayer       = _settings.Settings.PinLocalPlayer;
 
         WriteLog("StartCapture - calling _capture.Start");
         _capture.Start(_settings.Settings.AionPort, _settings.Settings.ServerIp);
@@ -199,6 +215,8 @@ public class MainViewModel : BaseViewModel
         IsCapturing = true;
         WriteLog("StartCapture - done");
     }
+
+    public void NotifyChanged(string propertyName) => OnPropertyChanged(propertyName);
 
     private static void WriteLog(string msg)
     {
@@ -253,7 +271,10 @@ public class MainViewModel : BaseViewModel
         if (session?.IsActive == true)
         {
             var elapsed = session.ElapsedSeconds;
-            CombatTimer = $"{(int)(elapsed / 60):D2}:{(int)(elapsed % 60):D2}";
+            int h = (int)(elapsed / 3600);
+            int m = (int)(elapsed % 3600 / 60);
+            int s = (int)(elapsed % 60);
+            CombatTimer = h > 0 ? $"{h}:{m:D2}:{s:D2}" : $"{m:D2}:{s:D2}";
             IsInCombat = true;
         }
         else
@@ -277,6 +298,7 @@ public class MainViewModel : BaseViewModel
         _capture.OnError       -= OnCaptureError;
         _capture.OnStatus      -= OnCaptureStatus;
         _tracker.Players.CollectionChanged -= OnPlayersChanged;
+        _tracker.OnCombatEnded -= OnCombatEndedForUpload;
 
         _timerRefresh?.Stop();
         _timerRefresh = null;

@@ -23,13 +23,15 @@ public class CombatTrackerService : IDisposable
     // 닉네임 캐시: 패킷 수신 순서와 무관하게 이름을 보존
     private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, string> _nameCache = new();
 
+    // 자동 종료: 마지막 데미지 이후 N초 무활동
+    private DateTime _lastDamageTime = DateTime.MinValue;
+
     public uint LocalPlayerId { get; set; }
-
-    /// <summary>보스 타겟 기준 필터 (모든 공격자의 보스 딜 표시)</summary>
     public bool FilterByBossTarget { get; set; } = false;
-
-    /// <summary>파티원(이름 확인된 플레이어) 기준 필터</summary>
     public bool FilterByKnownPlayers { get; set; } = true;
+    public string SortBy { get; set; } = "TotalDamage";
+    public int AutoEndSeconds { get; set; } = 10;
+    public bool PinLocalPlayer { get; set; } = false;
 
     public ObservableCollection<PlayerStats> Players { get; } = new();
     public ObservableCollection<CombatSession> History { get; } = new();
@@ -59,13 +61,13 @@ public class CombatTrackerService : IDisposable
 
         lock (_lock)
         {
-            // 타겟이 알려진 플레이어(파티원)이면 무시
+            // 타겟이 알려진 플레이어(파티원)이면 항상 무시
             // → 몬스터→파티원 공격, 파티원→파티원 힐/버프 데미지 제외
             if (_nameCache.ContainsKey(evt.TargetId)) return;
 
+            // ── 세션 시작 ────────────────────────────────────────────
             if (_currentSession == null || !_currentSession.IsActive)
             {
-                // 새 세션 시작 - 첫 데미지의 타겟이 보스
                 _currentSession = new CombatSession
                 {
                     BossId    = evt.TargetId,
@@ -74,14 +76,15 @@ public class CombatTrackerService : IDisposable
                 };
                 _totalPartyDamageCache = 0;
             }
+            else if (FilterByBossTarget && evt.TargetId != _currentSession.BossId)
+            {
+                // 보스타겟 필터 ON 상태에서 다른 타겟 → 무시
+                return;
+            }
 
             var session = _currentSession!;
 
-            // ── 필터링 ──────────────────────────────────────────────
-            // 1. 보스 타겟 기준: 현재 보스 이외 타겟은 무시
-            if (evt.TargetId != session.BossId) return;
-
-            // 2. 파티원 기준: 이름이 확인된 플레이어(닉네임 패킷 수신)만 표시
+            // FilterByKnownPlayers=ON : 이름이 확인된 플레이어(파티원)만 표시
             if (FilterByKnownPlayers && !_nameCache.ContainsKey(evt.AttackerId)) return;
 
             if (session.Events.Count >= 5000)
@@ -119,6 +122,15 @@ public class CombatTrackerService : IDisposable
             skill.TotalDamage += evt.Damage;
             skill.HitCount++;
             if (evt.IsCritical) skill.CritCount++;
+            if (evt.Damage > skill.MaxHit) skill.MaxHit = evt.Damage;
+            skill.IsDot = evt.IsDot;
+
+            // MaxHit, DoT 분리
+            if (evt.Damage > player.MaxHit) player.MaxHit = evt.Damage;
+            if (evt.IsDot) player.DotDamage += evt.Damage;
+            else player.DirectDamage += evt.Damage;
+
+            _lastDamageTime = DateTime.Now;
         }
 
         // UI 업데이트는 DispatcherTimer에서 처리 (500ms마다)
@@ -142,18 +154,26 @@ public class CombatTrackerService : IDisposable
     public void Reset()
     {
         if (_disposed) return;
+        CombatSession? toSave = null;
         lock (_lock)
         {
             if (_currentSession != null)
             {
                 _currentSession.EndTime = DateTime.Now;
                 if (_currentSession.Events.Count > 0)
-                    SaveToHistory(_currentSession);
+                    toSave = _currentSession;
             }
             _currentSession = null;
             _totalPartyDamageCache = 0;
         }
-        // DispatcherTimer가 다음 tick에 UI 갱신
+        if (toSave != null)
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+                dispatcher.Invoke(() => SaveToHistory(toSave));
+            else
+                SaveToHistory(toSave);
+        }
     }
 
     public void EndCombat()
@@ -164,11 +184,19 @@ public class CombatTrackerService : IDisposable
         {
             if (_currentSession == null) return;
             _currentSession.EndTime = DateTime.Now;
-            SaveToHistory(_currentSession);
             ended = _currentSession;
         }
-        if (ended != null)
-            OnCombatEnded?.Invoke(this, ended);
+        if (ended == null) return;
+
+        // SaveToHistory는 UI 스레드에서만 가능
+        // DispatcherTimer(UI스레드)에서 호출되면 직접, 아니면 Invoke
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+            dispatcher.Invoke(() => SaveToHistory(ended));
+        else
+            SaveToHistory(ended);
+
+        OnCombatEnded?.Invoke(this, ended);
     }
 
     private void SaveToHistory(CombatSession session)
@@ -215,7 +243,32 @@ public class CombatTrackerService : IDisposable
             player.DamagePercent = totalDmg > 0 ? (double)player.TotalDamage / totalDmg : 0;
         }
 
-        var sorted = snapshot.OrderByDescending(p => p.TotalDamage).ToList();
+        // 자동 종료 체크
+        if (_lastDamageTime != DateTime.MinValue &&
+            (DateTime.Now - _lastDamageTime).TotalSeconds > AutoEndSeconds &&
+            _currentSession?.IsActive == true)
+        {
+            EndCombat();
+            return;
+        }
+
+        var sorted = SortBy switch
+        {
+            "Dps"      => snapshot.OrderByDescending(p => p.Dps).ToList(),
+            "HitCount" => snapshot.OrderByDescending(p => p.HitCount).ToList(),
+            _          => snapshot.OrderByDescending(p => p.TotalDamage).ToList()
+        };
+
+        // 본인 캐릭터 상단 고정
+        if (PinLocalPlayer && LocalPlayerId != 0)
+        {
+            var local = sorted.FirstOrDefault(p => p.EntityId == LocalPlayerId);
+            if (local != null)
+            {
+                sorted.Remove(local);
+                sorted.Insert(0, local);
+            }
+        }
 
         // UI 업데이트 (이미 UI 스레드이므로 직접 조작)
         Players.Clear();
