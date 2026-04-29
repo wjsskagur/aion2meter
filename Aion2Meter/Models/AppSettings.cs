@@ -12,7 +12,7 @@ public class AppSettings
 
     public int AionPort { get; set; } = 13328;
     public bool FilterByBossTarget { get; set; } = true;
-    public bool FilterByKnownPlayers { get; set; } = true;
+    public bool FilterByKnownPlayers { get; set; } = false;  // 기본 OFF
 
     public double RowHeight { get; set; } = 22;
     public double FontScale { get; set; } = 1.0;

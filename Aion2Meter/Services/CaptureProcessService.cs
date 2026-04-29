@@ -248,30 +248,37 @@ public class CaptureProcessService : IDisposable
         }
     }
 
-    private void ProcessMessage(string json)
+    private void ProcessMessage(string line)
     {
         try
         {
-            using var doc = JsonDocument.Parse(json);
+            using var doc = JsonDocument.Parse(line);
             var root = doc.RootElement;
             if (!root.TryGetProperty("type", out var t)) return;
 
             switch (t.GetString())
             {
                 case "damage":
-                    OnCombatEvent?.Invoke(this, new CombatEvent
+                    var dmgJson = root.TryGetProperty("data", out var dataProp)
+                        ? dataProp.GetString() ?? line
+                        : line;
+                    using (var dmgDoc = JsonDocument.Parse(dmgJson))
                     {
-                        AttackerId   = root.GetProperty("attackerId").GetUInt32(),
-                        AttackerName = root.GetProperty("attackerName").GetString() ?? "Unknown",
-                        TargetId     = root.GetProperty("targetId").GetUInt32(),
-                        TargetName   = root.GetProperty("targetName").GetString() ?? "Unknown",
-                        SkillId      = root.GetProperty("skillId").GetUInt32(),
-                        SkillName    = root.GetProperty("skillName").GetString() ?? "Unknown",
-                        Damage       = root.GetProperty("damage").GetInt64(),
-                        IsCritical   = root.GetProperty("isCritical").GetBoolean(),
-                        IsDot        = root.TryGetProperty("isDot", out var dotProp) && dotProp.GetBoolean(),
-                        Timestamp    = DateTime.Now
-                    });
+                        var d = dmgDoc.RootElement;
+                        OnCombatEvent?.Invoke(this, new CombatEvent
+                        {
+                            AttackerId   = d.GetProperty("attackerId").GetUInt32(),
+                            AttackerName = d.GetProperty("attackerName").GetString() ?? "Unknown",
+                            TargetId     = d.GetProperty("targetId").GetUInt32(),
+                            TargetName   = d.GetProperty("targetName").GetString() ?? "Unknown",
+                            SkillId      = d.GetProperty("skillId").GetUInt32(),
+                            SkillName    = d.GetProperty("skillName").GetString() ?? "Unknown",
+                            Damage       = d.GetProperty("damage").GetInt64(),
+                            IsCritical   = d.GetProperty("isCritical").GetBoolean(),
+                            IsDot        = d.TryGetProperty("isDot", out var dotProp) && dotProp.GetBoolean(),
+                            Timestamp    = DateTime.Now
+                        });
+                    }
                     break;
                 case "entity":
                     var entityId = root.GetProperty("entityId").GetUInt32();

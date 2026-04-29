@@ -160,6 +160,36 @@ public partial class MainWindow : Window
 
     private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
+    private void RightEdge_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        var edge = (FrameworkElement)sender;
+        edge.CaptureMouse();
+        var startX = e.GetPosition(this).X;
+        var startW = Width;
+
+        void onMove(object s2, System.Windows.Input.MouseEventArgs e2)
+        {
+            var dx = e2.GetPosition(this).X - startX;
+            Width = Math.Max(240, startW + dx);
+        }
+        void onUp(object s2, System.Windows.Input.MouseButtonEventArgs e2)
+        {
+            edge.ReleaseMouseCapture();
+            edge.MouseMove -= onMove;
+            edge.MouseLeftButtonUp -= onUp;
+            if (_vm != null) _vm.Settings.WindowWidth = Width;
+        }
+        edge.MouseMove += onMove;
+        edge.MouseLeftButtonUp += onUp;
+    }
+
+    private void ResizeGrip_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        // 하단 그립도 동일하게 처리
+        RightEdge_MouseLeftButtonDown(sender, e);
+    }
+
     public void ApplySettings()
     {
         if (_vm == null) return;
@@ -176,6 +206,12 @@ public partial class MainWindow : Window
         if (_vm == null) return;
         var settingsWindow = new SettingsWindow(_vm) { Owner = this };
         settingsWindow.ShowDialog();
+    }
+
+    private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_vm != null)
+            _vm.Settings.WindowWidth = Width;
     }
 
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)

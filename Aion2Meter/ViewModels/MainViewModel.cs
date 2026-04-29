@@ -275,7 +275,11 @@ public class MainViewModel : BaseViewModel
             int m = (int)(elapsed % 3600 / 60);
             int s = (int)(elapsed % 60);
             CombatTimer = h > 0 ? $"{h}:{m:D2}:{s:D2}" : $"{m:D2}:{s:D2}";
-            IsInCombat = true;
+            IsInCombat  = true;
+
+            // BossHp 패킷이 없어도 세션 이름으로 보스명 표시
+            if (!string.IsNullOrEmpty(session.BossName) && BossName != session.BossName)
+                BossName = session.BossName;
         }
         else
         {

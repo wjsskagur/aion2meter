@@ -23,12 +23,15 @@ public class CombatTrackerService : IDisposable
     // 닉네임 캐시: 패킷 수신 순서와 무관하게 이름을 보존
     private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, string> _nameCache = new();
 
+    // 공격자로 등장한 ID = 플레이어 (닉네임 패킷 없어도 플레이어 판별)
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, byte> _knownPlayerIds = new();
+
     // 자동 종료: 마지막 데미지 이후 N초 무활동
     private DateTime _lastDamageTime = DateTime.MinValue;
 
     public uint LocalPlayerId { get; set; }
     public bool FilterByBossTarget { get; set; } = false;
-    public bool FilterByKnownPlayers { get; set; } = true;
+    public bool FilterByKnownPlayers { get; set; } = false;  // 기본 OFF - 닉네임 패킷 없어도 동작
     public string SortBy { get; set; } = "TotalDamage";
     public int AutoEndSeconds { get; set; } = 10;
     public bool PinLocalPlayer { get; set; } = false;
@@ -61,9 +64,12 @@ public class CombatTrackerService : IDisposable
 
         lock (_lock)
         {
-            // 타겟이 알려진 플레이어(파티원)이면 항상 무시
-            // → 몬스터→파티원 공격, 파티원→파티원 힐/버프 데미지 제외
+            // 공격자로 등장한 ID는 플레이어로 기록
+            _knownPlayerIds.TryAdd(evt.AttackerId, 0);
+
+            // 타겟이 알려진 플레이어이면 무시 (몬스터→파티원, PvP 등)
             if (_nameCache.ContainsKey(evt.TargetId)) return;
+            if (_knownPlayerIds.ContainsKey(evt.TargetId)) return;
 
             // ── 세션 시작 ────────────────────────────────────────────
             if (_currentSession == null || !_currentSession.IsActive)
@@ -85,7 +91,9 @@ public class CombatTrackerService : IDisposable
             var session = _currentSession!;
 
             // FilterByKnownPlayers=ON : 이름이 확인된 플레이어(파티원)만 표시
-            if (FilterByKnownPlayers && !_nameCache.ContainsKey(evt.AttackerId)) return;
+            // 단, 본인(LocalPlayerId)은 닉네임 패킷 수신 여부와 무관하게 항상 표시
+            bool isLocalPlayer = LocalPlayerId != 0 && evt.AttackerId == LocalPlayerId;
+            if (FilterByKnownPlayers && !isLocalPlayer && !_nameCache.ContainsKey(evt.AttackerId)) return;
 
             if (session.Events.Count >= 5000)
                 session.Events.RemoveAt(0);
@@ -165,6 +173,7 @@ public class CombatTrackerService : IDisposable
             }
             _currentSession = null;
             _totalPartyDamageCache = 0;
+            _knownPlayerIds.Clear();
         }
         if (toSave != null)
         {

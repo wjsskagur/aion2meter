@@ -38,11 +38,17 @@ if (testMode)
     Log($"=== 캡처 시작 port={port} ===");
     Log($"로그 파일: {logPath}");
 
-    var testParser = new PacketParserService();
-    testParser.OnDamageEvent += dmg =>
-        Log($"[DAMAGE] {System.Text.Json.JsonSerializer.Serialize(dmg)}");
-    testParser.OnEntityInfoEvent += info =>
-        Log($"[ENTITY] id={info.entityId} name={info.name} local={info.isLocalPlayer}");
+    // 연결별 파서 (테스트 모드)
+    var testParsers = new System.Collections.Concurrent.ConcurrentDictionary<ushort, PacketParserService>();
+    PacketParserService GetTestParser(ushort dstPort) =>
+        testParsers.GetOrAdd(dstPort, _ =>
+        {
+            var p = new PacketParserService();
+            p.OnDamageEvent += dmg => Log($"[DAMAGE] {System.Text.Json.JsonSerializer.Serialize(dmg)}");
+            p.OnEntityInfoEvent += info => Log($"[ENTITY] id={info.entityId} name={info.name} local={info.isLocalPlayer}");
+            p.OnSpawnEvent += spawn => Log($"[SPAWN] entityId={spawn.entityId} name={spawn.mobName} boss={spawn.isBoss}");
+            return p;
+        });
 
     var testDevices = new List<ILiveDevice>();
     foreach (var dev in CaptureDeviceList.Instance)
@@ -70,7 +76,7 @@ if (testMode)
                                 $"hex={BitConverter.ToString(d, 0, Math.Min(32, d.Length))}");
                         }
                         long seqNum = (long)tcp.SequenceNumber & 0xFFFFFFFFL;
-                        testParser.FeedPacket(seqNum, d);
+                        GetTestParser(tcp.DestinationPort).FeedPacket(seqNum, d);
                     }
                 }
                 catch { }
@@ -116,24 +122,35 @@ async Task SendAsync(object payload)
     catch { }
 }
 
-var parser = new PacketParserService();
-parser.OnDamageEvent += dmg =>
+// TCP 연결(dst포트)별 파서 - 연결마다 시퀀스 번호가 독립적이므로 분리 필수
+var parsers = new System.Collections.Concurrent.ConcurrentDictionary<ushort, PacketParserService>();
+
+PacketParserService GetOrCreateParser(ushort dstPort)
 {
-    var json = JsonSerializer.Serialize(dmg);
-    Console.WriteLine($"[DAMAGE] {json}");
-    SendSync(dmg);
-};
-parser.OnEntityInfoEvent += info =>
-{
-    Console.WriteLine($"[ENTITY] id={info.entityId} name={info.name} local={info.isLocalPlayer}");
-    SendSync(new { type = "entity", entityId = info.entityId, name = info.name, isLocalPlayer = info.isLocalPlayer });
-};
-parser.OnBossHpEvent += boss => SendSync(new { type = "bossHp", bossId = boss.bossId, bossName = boss.bossName, currentHp = boss.currentHp, maxHp = boss.maxHp });
-parser.OnSpawnEvent += spawn =>
-{
-    Console.WriteLine($"[SPAWN] entityId={spawn.entityId} name={spawn.mobName} boss={spawn.isBoss}");
-    SendSync(new { type = "spawn", entityId = spawn.entityId, name = spawn.mobName, isBoss = spawn.isBoss });
-};
+    return parsers.GetOrAdd(dstPort, _ =>
+    {
+        var p = new PacketParserService();
+        p.OnDamageEvent += dmg =>
+        {
+            var json = JsonSerializer.Serialize(dmg);
+            Console.WriteLine($"[DAMAGE] {json}");
+            // type 필드를 포함해서 전송해야 ProcessMessage에서 "damage"로 라우팅됨
+            SendSync(new { type = "damage", data = json });
+        };
+        p.OnEntityInfoEvent += info =>
+        {
+            Console.WriteLine($"[ENTITY] id={info.entityId} name={info.name} local={info.isLocalPlayer}");
+            SendSync(new { type = "entity", entityId = info.entityId, name = info.name, isLocalPlayer = info.isLocalPlayer });
+        };
+        p.OnBossHpEvent += boss => SendSync(new { type = "bossHp", bossId = boss.bossId, bossName = boss.bossName, currentHp = boss.currentHp, maxHp = boss.maxHp });
+        p.OnSpawnEvent += spawn =>
+        {
+            Console.WriteLine($"[SPAWN] entityId={spawn.entityId} name={spawn.mobName} boss={spawn.isBoss}");
+            SendSync(new { type = "spawn", entityId = spawn.entityId, name = spawn.mobName, isBoss = spawn.isBoss });
+        };
+        return p;
+    });
+}
 
 var captureDevices = new List<ILiveDevice>();
 try
@@ -187,7 +204,7 @@ void OnPacketArrival(object? sender, SharpPcap.PacketCapture e)
         // 서버 → 클라이언트 방향만 처리
         if (tcp?.PayloadData is { Length: > 0 } payload && tcp.SourcePort == port)
         {
-            var data   = payload.ToArray();
+            var data    = payload.ToArray();
             long seqNum = (long)tcp.SequenceNumber & 0xFFFFFFFFL;
 
             if (data.Length >= 4)
@@ -196,8 +213,8 @@ void OnPacketArrival(object? sender, SharpPcap.PacketCapture e)
                 Console.WriteLine($"[PKT] src={tcp.SourcePort} dst={tcp.DestinationPort} seq={seqNum} op=0x{op:X4} len={data.Length}");
             }
 
-            // Task.Run 제거 - 순서 보장을 위해 직접 호출
-            parser.FeedPacket(seqNum, data);
+            // 연결별 파서로 처리 (시퀀스 번호가 연결마다 독립적)
+            GetOrCreateParser(tcp.DestinationPort).FeedPacket(seqNum, data);
         }
     }
     catch { }

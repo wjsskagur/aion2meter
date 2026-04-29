@@ -8,12 +8,16 @@
         WindowStyle="None"
         AllowsTransparency="True"
         WindowStartupLocation="Manual"
-        Closing="Window_Closing">
+        Closing="Window_Closing"
+        SizeChanged="Window_SizeChanged">
 
-    <Border Background="{StaticResource BackgroundBrush}"
-            CornerRadius="8"
-            BorderBrush="{StaticResource BorderBrush}"
-            BorderThickness="1">
+    <Grid>
+        <!-- 메인 컨텐츠 -->
+        <Border Background="{StaticResource BackgroundBrush}"
+                CornerRadius="8"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                Margin="0,0,4,0">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -248,10 +252,25 @@
                                    FontSize="9"
                                    FontFamily="{StaticResource GameFont}"
                                    Foreground="{StaticResource AccentBrush}"/>
+                        <!-- 리사이즈 그립 -->
+                        <TextBlock Text="◢" FontSize="10"
+                                   Margin="6,0,0,0"
+                                   Cursor="SizeWE"
+                                   Foreground="#556688"
+                                   VerticalAlignment="Center"
+                                   ToolTip="드래그하여 너비 조절"
+                                   MouseLeftButtonDown="ResizeGrip_MouseLeftButtonDown"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
         </Grid>
-    </Border>
+        </Border>
+
+        <!-- 오른쪽 테두리 드래그로 너비 조절 -->
+        <Border Width="6" HorizontalAlignment="Right"
+                Background="Transparent"
+                Cursor="SizeWE"
+                MouseLeftButtonDown="RightEdge_MouseLeftButtonDown"/>
+    </Grid>
 </Window>

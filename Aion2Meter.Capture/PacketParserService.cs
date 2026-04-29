@@ -147,7 +147,12 @@ public class PacketParserService
     {
         EnsureSkillsLoaded();
         if (_skillNames.TryGetValue(skillId, out var n)) return n;
+        // 마지막 1자리 제거 (레벨 업그레이드 변형: 12092351 → 12092350)
+        var base1 = (skillId / 10) * 10;
+        if (_skillNames.TryGetValue(base1, out n)) return n;
+        // 마지막 2자리 제거
         if (_skillNames.TryGetValue(skillId / 10, out n)) return n;
+        // 마지막 3자리 제거
         if (_skillNames.TryGetValue(skillId / 100, out n)) return n;
         return $"Skill_{skillId}";
     }
@@ -388,7 +393,6 @@ public class PacketParserService
         if (actorInfo.value == targetInfo.value) return false;
         if (damageInfo.value <= 0 || damageInfo.value >= 10_000_000) return true;
 
-        // 직업 추론 (이름 없는 플레이어용)
         DetectClass(actorInfo.value, skillCode);
 
         string attackerName = GetDisplayName(actorInfo.value, $"플레이어_{actorInfo.value % 1000:D3}");
@@ -404,7 +408,7 @@ public class PacketParserService
             skillId = (uint)skillCode,
             skillName = GetSkillNameInternal(skillCode),
             damage = (long)damageInfo.value,
-            isCritical = false,
+            isCritical = typeInfo.value == 3,   // TK: type==3 이면 치명타
             isDot = false
         });
         return true;
