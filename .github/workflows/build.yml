@@ -104,6 +104,21 @@ jobs:
           Write-Host "Files in publish dir:"
           Get-ChildItem $publishDir | Select-Object Name, Length
 
+      # ── 5-3. Resources 폴더 복사 ──────────────────────
+      # skills.json, mobs.json을 publish 폴더에 복사
+      # Aion2Meter.exe와 Aion2Meter.Capture.exe 모두 같은 폴더에서 로드
+      - name: Copy Resources
+        shell: pwsh
+        run: |
+          $publishDir = "${{ github.workspace }}\publish"
+          $resDir = "$publishDir\Resources"
+          New-Item -ItemType Directory -Force -Path $resDir | Out-Null
+          Copy-Item "Aion2Meter\Resources\skills.json" "$resDir\skills.json"
+          Copy-Item "Aion2Meter\Resources\mobs.json"   "$resDir\mobs.json"
+          Write-Host "Resources copied OK"
+          Write-Host "skills.json: $((Get-Item "$resDir\skills.json").Length) bytes"
+          Write-Host "mobs.json:   $((Get-Item "$resDir\mobs.json").Length) bytes"
+
       # ── 6. NSIS 설치 ──────────────────────────────────
       # NSIS는 Windows Runner에 기본 설치 안 되어 있음
       - name: Install NSIS

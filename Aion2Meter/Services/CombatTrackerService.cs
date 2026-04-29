@@ -59,6 +59,10 @@ public class CombatTrackerService : IDisposable
 
         lock (_lock)
         {
+            // 타겟이 알려진 플레이어(파티원)이면 무시
+            // → 몬스터→파티원 공격, 파티원→파티원 힐/버프 데미지 제외
+            if (_nameCache.ContainsKey(evt.TargetId)) return;
+
             if (_currentSession == null || !_currentSession.IsActive)
             {
                 // 새 세션 시작 - 첫 데미지의 타겟이 보스
@@ -78,9 +82,6 @@ public class CombatTrackerService : IDisposable
             if (evt.TargetId != session.BossId) return;
 
             // 2. 파티원 기준: 이름이 확인된 플레이어(닉네임 패킷 수신)만 표시
-            //    FilterByKnownPlayers=true이고 FilterByBossTarget=false이면 파티원만
-            //    둘 다 true이면 보스 타겟 + 파티원 교집합
-            //    FilterByBossTarget=true, FilterByKnownPlayers=false이면 보스 타겟 전체
             if (FilterByKnownPlayers && !_nameCache.ContainsKey(evt.AttackerId)) return;
 
             if (session.Events.Count >= 5000)

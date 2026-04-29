@@ -129,6 +129,11 @@ parser.OnEntityInfoEvent += info =>
     SendSync(new { type = "entity", entityId = info.entityId, name = info.name, isLocalPlayer = info.isLocalPlayer });
 };
 parser.OnBossHpEvent += boss => SendSync(new { type = "bossHp", bossId = boss.bossId, bossName = boss.bossName, currentHp = boss.currentHp, maxHp = boss.maxHp });
+parser.OnSpawnEvent += spawn =>
+{
+    Console.WriteLine($"[SPAWN] entityId={spawn.entityId} name={spawn.mobName} boss={spawn.isBoss}");
+    SendSync(new { type = "spawn", entityId = spawn.entityId, name = spawn.mobName, isBoss = spawn.isBoss });
+};
 
 var captureDevices = new List<ILiveDevice>();
 try

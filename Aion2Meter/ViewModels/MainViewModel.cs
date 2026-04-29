@@ -95,6 +95,7 @@ public class MainViewModel : BaseViewModel
         // 이벤트 연결 (명명된 메서드 → Cleanup에서 정확히 해제 가능)
         _capture.OnCombatEvent += OnCombatEventReceived;
         _capture.OnEntityInfo  += OnEntityInfoReceived;
+        _capture.OnSpawn       += OnSpawnReceived;
         _capture.OnBossHp      += OnBossHpReceived;
         _capture.OnError       += OnCaptureError;
         _capture.OnStatus      += OnCaptureStatus;
@@ -123,6 +124,19 @@ public class MainViewModel : BaseViewModel
         if (e.isLocalPlayer)
             _tracker.LocalPlayerId = e.entityId;
         _tracker.UpdateEntityName(e.entityId, e.name);
+    }
+
+    private void OnSpawnReceived(object? s, (uint entityId, string name, bool isBoss) e)
+    {
+        // 스폰 이벤트: 몬스터 이름 캐시에 저장
+        _tracker.UpdateEntityName(e.entityId, e.name);
+        // 보스이면 보스 이름도 업데이트
+        if (e.isBoss)
+            App.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                if (BossName == $"Boss_{e.entityId}" || string.IsNullOrEmpty(BossName))
+                    BossName = e.name;
+            });
     }
 
     private long _bossMaxHp = 0;
@@ -258,6 +272,7 @@ public class MainViewModel : BaseViewModel
     {
         _capture.OnCombatEvent -= OnCombatEventReceived;
         _capture.OnEntityInfo  -= OnEntityInfoReceived;
+        _capture.OnSpawn       -= OnSpawnReceived;
         _capture.OnBossHp      -= OnBossHpReceived;
         _capture.OnError       -= OnCaptureError;
         _capture.OnStatus      -= OnCaptureStatus;

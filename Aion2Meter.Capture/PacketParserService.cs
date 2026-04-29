@@ -26,6 +26,48 @@ public class PacketParserService
     private static readonly Dictionary<long, string> _skillNames = new();
     private static bool _skillsLoaded = false;
 
+    private static readonly Dictionary<long, (string name, bool boss)> _mobData = new();
+    private static bool _mobsLoaded = false;
+
+    private static void EnsureMobsLoaded()
+    {
+        if (_mobsLoaded) return;
+        _mobsLoaded = true;
+        try
+        {
+            var candidates = new[]
+            {
+                System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "mobs.json"),
+                System.IO.Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
+                    "Aion2Meter", "Resources", "mobs.json"),
+            };
+            var path = candidates.FirstOrDefault(System.IO.File.Exists);
+            if (path == null) return;
+
+            var doc = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(path));
+            foreach (var item in doc.RootElement.EnumerateArray())
+            {
+                long code = item.GetProperty("code").GetInt64();
+                string name = item.GetProperty("name").GetString() ?? "";
+                bool boss = item.TryGetProperty("boss", out var b) && b.GetBoolean();
+                _mobData[code] = (name, boss);
+            }
+        }
+        catch { }
+    }
+
+    private static string? GetMobNameInternal(long mobCode)
+    {
+        EnsureMobsLoaded();
+        return _mobData.TryGetValue(mobCode, out var m) ? m.name : null;
+    }
+
+    private static bool IsBossInternal(long mobCode)
+    {
+        EnsureMobsLoaded();
+        return _mobData.TryGetValue(mobCode, out var m) && m.boss;
+    }
+
     private static void EnsureSkillsLoaded()
     {
         if (_skillsLoaded) return;
@@ -66,6 +108,10 @@ public class PacketParserService
     public event Action<object>? OnDamageEvent;
     public event Action<(uint entityId, string name, bool isLocalPlayer)>? OnEntityInfoEvent;
     public event Action<(uint bossId, string bossName, long currentHp, long maxHp)>? OnBossHpEvent;
+    public event Action<(uint entityId, string mobName, bool isBoss)>? OnSpawnEvent;
+
+    // entityId → mobCode 매핑 (스폰 패킷에서 수집)
+    private readonly ConcurrentDictionary<int, int> _mobCodeMap = new();
 
     // TCP 스트림 재조합 버퍼
     private readonly byte[] _streamBuffer = new byte[1024 * 1024]; // 1MB
@@ -195,6 +241,7 @@ public class PacketParserService
         var li = new VarIntResult(lengthInfo.value, lengthInfo.length);
         ParseNicknameOwn(packet, li);
         ParseNicknameOther(packet, li);
+        if (ParseSpawn(packet, li, extraFlag)) return;
         if (ParseDamage(packet, extraFlag)) return;
         if (ParseDoT(packet, extraFlag)) return;
         if (ParseBossHp(packet, li, extraFlag)) return;
@@ -442,7 +489,52 @@ public class PacketParserService
         }
     }
 
-    private bool ParseBossHp(byte[] packet, VarIntResult lengthInfo, bool extraFlag)
+    private bool ParseSpawn(byte[] packet, VarIntResult lengthInfo, bool extraFlag)
+    {
+        int offset = lengthInfo.length;
+        if (extraFlag) offset++;
+        if (offset + 2 >= packet.Length) return false;
+        if (packet[offset] != 0x40) return false;
+        if (packet[offset + 1] != 0x36) return false;
+        offset += 2;
+
+        var entityInfo = ReadVarInt(packet, offset);
+        if (entityInfo.length < 0) return false;
+
+        // codeMarker [00 40 02] 또는 [00 00 02] 찾기
+        int codeIdx = FindBytes(packet, 0x00, 0x40, 0x02);
+        if (codeIdx < 3) codeIdx = FindBytes(packet, 0x00, 0x00, 0x02);
+        if (codeIdx < 3) return false;
+
+        // mobCode = codeMarker 앞 3바이트 (little-endian 24bit)
+        int mobCode = (packet[codeIdx - 1] << 16) | (packet[codeIdx - 2] << 8) | packet[codeIdx - 3];
+        if (mobCode <= 0) return false;
+
+        _mobCodeMap[entityInfo.value] = mobCode;
+
+        // 스킬 데이터에서 몬스터 이름 조회
+        string mobName = GetMobNameInternal(mobCode) ?? $"Mob_{mobCode}";
+        bool isBoss = IsBossInternal(mobCode);
+
+        // 이름 캐시에도 저장
+        _entityNames[entityInfo.value] = mobName;
+
+        Console.WriteLine($"[SPAWN] entityId={entityInfo.value} mobCode={mobCode} name={mobName} boss={isBoss}");
+        OnSpawnEvent?.Invoke(((uint)entityInfo.value, mobName, isBoss));
+        return true;
+    }
+
+    private static int FindBytes(byte[] data, params byte[] pattern)
+    {
+        for (int i = 0; i <= data.Length - pattern.Length; i++)
+        {
+            bool match = true;
+            for (int j = 0; j < pattern.Length; j++)
+                if (data[i + j] != pattern[j]) { match = false; break; }
+            if (match) return i;
+        }
+        return -1;
+    }
     {
         int offset = lengthInfo.length;
         if (extraFlag) offset++;
@@ -454,6 +546,9 @@ public class PacketParserService
         var mobIdInfo = ReadVarInt(packet, offset);
         if (mobIdInfo.length < 0) return false;
         offset += mobIdInfo.length;
+
+        // 이미 알려진 플레이어 ID면 파티원 HP 패킷 → 보스 HP 아님
+        if (_entityNames.ContainsKey(mobIdInfo.value)) return false;
 
         // 3개 VarInt 스킵
         for (int i = 0; i < 3; i++)

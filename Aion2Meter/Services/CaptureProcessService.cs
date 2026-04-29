@@ -19,6 +19,7 @@ public class CaptureProcessService : IDisposable
 
     public event EventHandler<CombatEvent>? OnCombatEvent;
     public event EventHandler<(uint entityId, string name, bool isLocalPlayer)>? OnEntityInfo;
+    public event EventHandler<(uint entityId, string name, bool isBoss)>? OnSpawn;
     public event EventHandler<(uint bossId, string bossName, long currentHp, long maxHp)>? OnBossHp;
     public event EventHandler<string>? OnError;
     public event EventHandler<string>? OnStatus;
@@ -276,6 +277,13 @@ public class CaptureProcessService : IDisposable
                     var entityName = root.GetProperty("name").GetString() ?? "";
                     var isLocal = root.TryGetProperty("isLocalPlayer", out var localProp) && localProp.GetBoolean();
                     OnEntityInfo?.Invoke(this, (entityId, entityName, isLocal));
+                    break;
+
+                case "spawn":
+                    var spawnId   = root.GetProperty("entityId").GetUInt32();
+                    var spawnName = root.GetProperty("name").GetString() ?? "";
+                    var isBoss    = root.TryGetProperty("isBoss", out var bossProp) && bossProp.GetBoolean();
+                    OnSpawn?.Invoke(this, (spawnId, spawnName, isBoss));
                     break;
                 case "bossHp":
                     OnBossHp?.Invoke(this, (
