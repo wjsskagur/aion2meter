@@ -47,7 +47,7 @@
   {
     "code": 2000412,
     "name": "파프니르의 독혈 (표본)",
-    "boss": false
+    "boss": true
   },
   {
     "code": 2000745,
@@ -242,6 +242,11 @@
   {
     "code": 2090027,
     "name": "몬스터 (표본)",
+    "boss": true
+  },
+  {
+    "code": 2090028,
+    "name": "TEST_PollutedFlower_01_Summon",
     "boss": false
   },
   {
@@ -795,6 +800,11 @@
     "boss": false
   },
   {
+    "code": 2090156,
+    "name": "Duduri_Timebomb_InvisibleNPC",
+    "boss": false
+  },
+  {
     "code": 2090157,
     "name": "테스트몹_Hidden",
     "boss": false
@@ -1215,6 +1225,21 @@
     "boss": false
   },
   {
+    "code": 2090328,
+    "name": "SANDBAG_FLAG_CHECK",
+    "boss": false
+  },
+  {
+    "code": 2090329,
+    "name": "FLAG_INVINCIBLE",
+    "boss": false
+  },
+  {
+    "code": 2090330,
+    "name": "FLAG",
+    "boss": false
+  },
+  {
     "code": 2090331,
     "name": "미니언 1단계",
     "boss": false
@@ -1255,6 +1280,106 @@
     "boss": false
   },
   {
+    "code": 2090339,
+    "name": "FLAG_BLUE",
+    "boss": false
+  },
+  {
+    "code": 2090340,
+    "name": "FLAG_RED",
+    "boss": false
+  },
+  {
+    "code": 2090341,
+    "name": "INVISIBLE_commander2",
+    "boss": false
+  },
+  {
+    "code": 2090342,
+    "name": "FLAG_INVINCIBLE2",
+    "boss": false
+  },
+  {
+    "code": 2090343,
+    "name": "FLAG2",
+    "boss": false
+  },
+  {
+    "code": 2090344,
+    "name": "FLAG_CONQUER_CHECK",
+    "boss": false
+  },
+  {
+    "code": 2090345,
+    "name": "FLAG_CONQUER_SPAWN_BLUE",
+    "boss": false
+  },
+  {
+    "code": 2090346,
+    "name": "FLAG_CONQUER_SPAWN_RED",
+    "boss": false
+  },
+  {
+    "code": 2090347,
+    "name": "INVISIBLE_switch_notice2",
+    "boss": false
+  },
+  {
+    "code": 2090360,
+    "name": "INVISIBLE_commander",
+    "boss": false
+  },
+  {
+    "code": 2090361,
+    "name": "BEAM_CENTER_easy_Blue",
+    "boss": false
+  },
+  {
+    "code": 2090362,
+    "name": "BEAM_SIDE_easy_Blue",
+    "boss": false
+  },
+  {
+    "code": 2090363,
+    "name": "BEAM_CENTER_easy_Red",
+    "boss": false
+  },
+  {
+    "code": 2090364,
+    "name": "BEAM_SIDE_easy_Red",
+    "boss": false
+  },
+  {
+    "code": 2090369,
+    "name": "DOTAREA_easy_Blue",
+    "boss": false
+  },
+  {
+    "code": 2090370,
+    "name": "DOTAREA_easy_Red",
+    "boss": false
+  },
+  {
+    "code": 2090371,
+    "name": "DOTAREA_easy_Blue_DotZone",
+    "boss": false
+  },
+  {
+    "code": 2090372,
+    "name": "DOTAREA_easy_Red_DotZone",
+    "boss": false
+  },
+  {
+    "code": 2090373,
+    "name": "PROJECTILE_easy_Blue",
+    "boss": false
+  },
+  {
+    "code": 2090374,
+    "name": "PROJECTILE_easy_Red",
+    "boss": false
+  },
+  {
     "code": 2090381,
     "name": "무적의 드라칸",
     "boss": false
@@ -1272,6 +1397,66 @@
   {
     "code": 2090384,
     "name": "나포의 울라크",
+    "boss": false
+  },
+  {
+    "code": 2090385,
+    "name": "INVISIBLE_switch_easy_PvPTest01_Blue",
+    "boss": false
+  },
+  {
+    "code": 2090386,
+    "name": "INVISIBLE_switch_easy_PvPTest02_Blue",
+    "boss": false
+  },
+  {
+    "code": 2090387,
+    "name": "INVISIBLE_switch_easy_PvPTest03_Blue",
+    "boss": false
+  },
+  {
+    "code": 2090388,
+    "name": "INVISIBLE_switch_easy_PvPTest01_Red",
+    "boss": false
+  },
+  {
+    "code": 2090389,
+    "name": "INVISIBLE_switch_easy_PvPTest02_Red",
+    "boss": false
+  },
+  {
+    "code": 2090390,
+    "name": "INVISIBLE_switch_easy_PvPTest03_Red",
+    "boss": false
+  },
+  {
+    "code": 2090391,
+    "name": "INVISIBLE_switch_notice",
+    "boss": false
+  },
+  {
+    "code": 2090392,
+    "name": "INVISIBLE_monster_notice",
+    "boss": false
+  },
+  {
+    "code": 2090393,
+    "name": "SANDBAG_SCOREBOARD_BLUE",
+    "boss": false
+  },
+  {
+    "code": 2090394,
+    "name": "SANDBAG_SCOREBOARD_RED",
+    "boss": false
+  },
+  {
+    "code": 2090395,
+    "name": "SANDBAG_WIN_SPAWN_MESSAGE_BLUE",
+    "boss": false
+  },
+  {
+    "code": 2090396,
+    "name": "SANDBAG_WIN_SPAWN_MESSAGE_RED",
     "boss": false
   },
   {
@@ -1293,6 +1478,11 @@
     "code": 2090402,
     "name": "마족 핵",
     "boss": true
+  },
+  {
+    "code": 2090403,
+    "name": "CAR",
+    "boss": false
   },
   {
     "code": 2090404,
@@ -1350,9 +1540,89 @@
     "boss": false
   },
   {
+    "code": 2090415,
+    "name": "INVISIBLE_BOSS_BLUE",
+    "boss": false
+  },
+  {
+    "code": 2090416,
+    "name": "INVISIBLE_BOSS_RED",
+    "boss": false
+  },
+  {
+    "code": 2090417,
+    "name": "INVISIBLE_HEAL",
+    "boss": false
+  },
+  {
+    "code": 2090418,
+    "name": "INVISIBLE_SLEEP",
+    "boss": false
+  },
+  {
+    "code": 2090419,
+    "name": "INVISIBLE_HASTE",
+    "boss": false
+  },
+  {
+    "code": 2090420,
+    "name": "INVISIBLE_WEAKEN",
+    "boss": false
+  },
+  {
+    "code": 2090421,
+    "name": "INVISIBLE_CAR_ABNORMAL",
+    "boss": false
+  },
+  {
+    "code": 2090422,
+    "name": "INVISIBLE_SPAWN_MONSTER",
+    "boss": false
+  },
+  {
+    "code": 2090423,
+    "name": "BEAM_CENTER",
+    "boss": false
+  },
+  {
+    "code": 2090424,
+    "name": "BEAM_SIDE",
+    "boss": false
+  },
+  {
+    "code": 2090425,
+    "name": "RING",
+    "boss": false
+  },
+  {
+    "code": 2090426,
+    "name": "INVISIBLE_RING_IN",
+    "boss": false
+  },
+  {
+    "code": 2090427,
+    "name": "INVISIBLE_RING_OUT",
+    "boss": false
+  },
+  {
     "code": 2090428,
     "name": "초월한 바카르마",
     "boss": true
+  },
+  {
+    "code": 2090429,
+    "name": "INVISIBLE_DOT_AREA",
+    "boss": false
+  },
+  {
+    "code": 2090430,
+    "name": "INVISIBLE_DOT_AREA_AI",
+    "boss": false
+  },
+  {
+    "code": 2090431,
+    "name": "INVISIBLE_LASER_AI",
+    "boss": false
   },
   {
     "code": 2090433,
@@ -1462,7 +1732,7 @@
   {
     "code": 2090458,
     "name": "샌드백",
-    "boss": false
+    "boss": true
   },
   {
     "code": 2090463,
@@ -4391,6 +4661,11 @@
     "boss": false
   },
   {
+    "code": 2101127,
+    "name": "M_L1_GT_R4_INS_DmgZone_01",
+    "boss": false
+  },
+  {
     "code": 2101128,
     "name": "카테코아",
     "boss": true
@@ -4643,7 +4918,7 @@
   {
     "code": 2101244,
     "name": "타락한 데바 정예병",
-    "boss": false
+    "boss": true
   },
   {
     "code": 2101260,
@@ -4718,12 +4993,12 @@
   {
     "code": 2101274,
     "name": "프렐 정예 실험체",
-    "boss": false
+    "boss": true
   },
   {
     "code": 2101275,
     "name": "하얀 송곳니 칼니프",
-    "boss": false
+    "boss": true
   },
   {
     "code": 2101290,
@@ -7826,6 +8101,11 @@
     "boss": true
   },
   {
+    "code": 2300170,
+    "name": "M_PD_Krao_AnimaTower_Door_01",
+    "boss": false
+  },
+  {
     "code": 2300171,
     "name": "완성체 베르크",
     "boss": true
@@ -7843,6 +8123,21 @@
   {
     "code": 2300174,
     "name": "완성체 베르크",
+    "boss": true
+  },
+  {
+    "code": 2300175,
+    "name": "M_PD_Krao_Boss_Invisible_01",
+    "boss": true
+  },
+  {
+    "code": 2300176,
+    "name": "M_PD_Krao_Boss_Invisible_02",
+    "boss": true
+  },
+  {
+    "code": 2300177,
+    "name": "M_PD_Krao_Boss_Invisible_03",
     "boss": true
   },
   {
@@ -7868,7 +8163,7 @@
   {
     "code": 2300188,
     "name": "깨어난 알투라돈",
-    "boss": false
+    "boss": true
   },
   {
     "code": 2300189,
@@ -8207,6 +8502,11 @@
     "boss": false
   },
   {
+    "code": 2300303,
+    "name": "M_PD_Fire_Temple_OdSpider_01_001",
+    "boss": false
+  },
+  {
     "code": 2300304,
     "name": "용암 거미",
     "boss": false
@@ -8254,6 +8554,11 @@
   {
     "code": 2300313,
     "name": "화염석 수호상",
+    "boss": false
+  },
+  {
+    "code": 2300314,
+    "name": "M_PD_Fire_Temple_CamShake_001",
     "boss": false
   },
   {
@@ -8933,6 +9238,21 @@
     "boss": true
   },
   {
+    "code": 2301015,
+    "name": "M_PD_ReforgedAbyss_AbyssStone_01",
+    "boss": false
+  },
+  {
+    "code": 2301016,
+    "name": "M_PD_ReforgedAbyss_AbyssStone_01_V01",
+    "boss": false
+  },
+  {
+    "code": 2301017,
+    "name": "M_PD_ReforgedAbyss_AbyssStone_01_V02",
+    "boss": false
+  },
+  {
     "code": 2301018,
     "name": "심연의 드라칸 무장병",
     "boss": false
@@ -9213,6 +9533,16 @@
     "boss": false
   },
   {
+    "code": 2301415,
+    "name": "M_PD_PhantomsHall_Invisible_01_Easy",
+    "boss": true
+  },
+  {
+    "code": 2301416,
+    "name": "M_PD_PhantomsHall_Invisible_02_Easy",
+    "boss": true
+  },
+  {
     "code": 2301501,
     "name": "가라앉은 에몬",
     "boss": true
@@ -9338,6 +9668,11 @@
     "boss": false
   },
   {
+    "code": 2310170,
+    "name": "M_PD_Krao_AnimaTower_Door_01_Easy",
+    "boss": false
+  },
+  {
     "code": 2310171,
     "name": "완성체 베르크",
     "boss": true
@@ -9355,6 +9690,21 @@
   {
     "code": 2310174,
     "name": "완성체 베르크",
+    "boss": true
+  },
+  {
+    "code": 2310175,
+    "name": "M_PD_Krao_Boss_Invisible_01_Easy",
+    "boss": true
+  },
+  {
+    "code": 2310176,
+    "name": "M_PD_Krao_Boss_Invisible_02_Easy",
+    "boss": true
+  },
+  {
+    "code": 2310177,
+    "name": "M_PD_Krao_Boss_Invisible_03_Easy",
     "boss": true
   },
   {
@@ -9534,6 +9884,11 @@
     "boss": false
   },
   {
+    "code": 2310303,
+    "name": "M_PD_Fire_Temple_OdSpider_01_001_Easy",
+    "boss": false
+  },
+  {
     "code": 2310304,
     "name": "용암 거미",
     "boss": false
@@ -9581,6 +9936,11 @@
   {
     "code": 2310313,
     "name": "화염석 수호상",
+    "boss": false
+  },
+  {
+    "code": 2310314,
+    "name": "M_PD_Fire_Temple_CamShake_001_Easy",
     "boss": false
   },
   {
@@ -10255,6 +10615,16 @@
     "boss": false
   },
   {
+    "code": 2311416,
+    "name": "M_PD_PhantomsHall_Invisible_01",
+    "boss": true
+  },
+  {
+    "code": 2311417,
+    "name": "M_PD_PhantomsHall_Invisible_02",
+    "boss": true
+  },
+  {
     "code": 2311418,
     "name": "혼령 폭탄",
     "boss": false
@@ -10315,6 +10685,11 @@
     "boss": false
   },
   {
+    "code": 2320170,
+    "name": "M_PD_Krao_AnimaTower_Door_01_hard",
+    "boss": false
+  },
+  {
     "code": 2320171,
     "name": "완성체 베르크",
     "boss": true
@@ -10332,6 +10707,21 @@
   {
     "code": 2320174,
     "name": "완성체 베르크",
+    "boss": true
+  },
+  {
+    "code": 2320175,
+    "name": "M_PD_Krao_Boss_Invisible_01_hard",
+    "boss": true
+  },
+  {
+    "code": 2320176,
+    "name": "M_PD_Krao_Boss_Invisible_02_hard",
+    "boss": true
+  },
+  {
+    "code": 2320177,
+    "name": "M_PD_Krao_Boss_Invisible_03_hard",
     "boss": true
   },
   {
@@ -10506,6 +10896,11 @@
     "boss": false
   },
   {
+    "code": 2320303,
+    "name": "M_PD_Fire_Temple_OdSpider_01_001_hard",
+    "boss": false
+  },
+  {
     "code": 2320304,
     "name": "용암 거미",
     "boss": false
@@ -10553,6 +10948,11 @@
   {
     "code": 2320313,
     "name": "화염석 수호상",
+    "boss": false
+  },
+  {
+    "code": 2320314,
+    "name": "M_PD_Fire_Temple_CamShake_001_hard",
     "boss": false
   },
   {
@@ -11082,6 +11482,11 @@
     "boss": false
   },
   {
+    "code": 2321215,
+    "name": "M_PD_ErosionPurifier_InvisibleNPC_02_Grade1",
+    "boss": false
+  },
+  {
     "code": 2321301,
     "name": "고뇌하는 바카르마",
     "boss": true
@@ -11255,6 +11660,16 @@
     "code": 2321414,
     "name": "환영 장막",
     "boss": false
+  },
+  {
+    "code": 2321416,
+    "name": "M_PD_PhantomsHall_Invisible_01_Hard",
+    "boss": true
+  },
+  {
+    "code": 2321417,
+    "name": "M_PD_PhantomsHall_Invisible_02_Hard",
+    "boss": true
   },
   {
     "code": 2321418,
@@ -11562,6 +11977,11 @@
     "boss": false
   },
   {
+    "code": 2323520,
+    "name": "M_PD_DDN_PollutedGrass_01_CV01_001_Grade4",
+    "boss": false
+  },
+  {
     "code": 2324500,
     "name": "드라토나",
     "boss": false
@@ -11659,6 +12079,11 @@
   {
     "code": 2324519,
     "name": "두르바티의 독액",
+    "boss": false
+  },
+  {
+    "code": 2324520,
+    "name": "M_PD_DDN_PollutedGrass_01_CV01_001_Grade5",
     "boss": false
   },
   {
@@ -11762,6 +12187,11 @@
     "boss": false
   },
   {
+    "code": 2325520,
+    "name": "M_PD_DDN_PollutedGrass_01_CV01_001_Grade6",
+    "boss": false
+  },
+  {
     "code": 2326500,
     "name": "드라토나",
     "boss": false
@@ -11859,6 +12289,16 @@
   {
     "code": 2326519,
     "name": "두르바티의 독액",
+    "boss": false
+  },
+  {
+    "code": 2326520,
+    "name": "M_PD_DDN_PollutedGrass_01_CV01_001_Grade7",
+    "boss": false
+  },
+  {
+    "code": 2326521,
+    "name": "M_PD_DDN_BeritraA_02_V02_001_Grade7",
     "boss": false
   },
   {
@@ -11962,6 +12402,16 @@
     "boss": false
   },
   {
+    "code": 2327520,
+    "name": "M_PD_DDN_PollutedGrass_01_CV01_001_Grade8",
+    "boss": false
+  },
+  {
+    "code": 2327521,
+    "name": "M_PD_DDN_BeritraA_02_V02_001_Grade8",
+    "boss": false
+  },
+  {
     "code": 2328500,
     "name": "드라토나",
     "boss": false
@@ -12062,6 +12512,16 @@
     "boss": false
   },
   {
+    "code": 2328520,
+    "name": "M_PD_DDN_PollutedGrass_01_CV01_001_Grade9",
+    "boss": false
+  },
+  {
+    "code": 2328521,
+    "name": "M_PD_DDN_BeritraA_02_V02_001_Grade9",
+    "boss": false
+  },
+  {
     "code": 2329500,
     "name": "드라토나",
     "boss": false
@@ -12159,6 +12619,16 @@
   {
     "code": 2329519,
     "name": "두르바티의 독액",
+    "boss": false
+  },
+  {
+    "code": 2329520,
+    "name": "M_PD_DDN_PollutedGrass_01_CV01_001_Grade10",
+    "boss": false
+  },
+  {
+    "code": 2329521,
+    "name": "M_PD_DDN_BeritraA_02_V02_001_Grade10",
     "boss": false
   },
   {
@@ -12362,6 +12832,11 @@
     "boss": false
   },
   {
+    "code": 2330303,
+    "name": "M_PD_Fire_Temple_OdSpider_01_001_Grade",
+    "boss": false
+  },
+  {
     "code": 2330304,
     "name": "용암 거미",
     "boss": false
@@ -12409,6 +12884,11 @@
   {
     "code": 2330313,
     "name": "화염석 수호상",
+    "boss": false
+  },
+  {
+    "code": 2330314,
+    "name": "M_PD_Fire_Temple_CamShake_001_Grade",
     "boss": false
   },
   {
@@ -12827,6 +13307,16 @@
     "boss": false
   },
   {
+    "code": 2340111,
+    "name": "M_L1_FE_Defence_Trap_01_002",
+    "boss": false
+  },
+  {
+    "code": 2340112,
+    "name": "M_L1_FE_Defence_Trap_01_003",
+    "boss": false
+  },
+  {
     "code": 2340113,
     "name": "도적단 대포",
     "boss": false
@@ -12942,6 +13432,16 @@
     "boss": false
   },
   {
+    "code": 2340165,
+    "name": "M_FE_Beritra_Meteor_001",
+    "boss": false
+  },
+  {
+    "code": 2340166,
+    "name": "M_FE_Beritra_Meteor_002",
+    "boss": false
+  },
+  {
     "code": 2340201,
     "name": "도둑 슈라크",
     "boss": false
@@ -13047,6 +13547,16 @@
     "boss": false
   },
   {
+    "code": 2340301,
+    "name": "M_L1_FE_OB_Light_01",
+    "boss": false
+  },
+  {
+    "code": 2340302,
+    "name": "M_L1_FE_OB_Light_02",
+    "boss": false
+  },
+  {
     "code": 2340351,
     "name": "점프 레이저",
     "boss": false
@@ -13062,6 +13572,26 @@
     "boss": false
   },
   {
+    "code": 2340354,
+    "name": "M_FE_JumpJump_FearTotem_01",
+    "boss": false
+  },
+  {
+    "code": 2340355,
+    "name": "M_FE_JumpJump_SlowTotem_01",
+    "boss": false
+  },
+  {
+    "code": 2340401,
+    "name": "M_L1_FE_Masquerade_ShugoBeast_01",
+    "boss": false
+  },
+  {
+    "code": 2340411,
+    "name": "M_L1_FE_SpecterEvasion_Ghost_01",
+    "boss": false
+  },
+  {
     "code": 2340412,
     "name": "시간의 소용돌이 (표본)",
     "boss": false
@@ -13069,6 +13599,36 @@
   {
     "code": 2340413,
     "name": "시간의 소용돌이",
+    "boss": false
+  },
+  {
+    "code": 2340501,
+    "name": "M_FE_Racing_RacingTornado_01",
+    "boss": false
+  },
+  {
+    "code": 2340502,
+    "name": "M_FE_Common_Racing_Electrosphere_01_CV01_001",
+    "boss": false
+  },
+  {
+    "code": 2340503,
+    "name": "M_FE_Common_Racing_Turret_07_001",
+    "boss": false
+  },
+  {
+    "code": 2340504,
+    "name": "M_FE_Common_Racing_Turret_08_001",
+    "boss": false
+  },
+  {
+    "code": 2340505,
+    "name": "M_FE_Common_Racing_Turret_09_001",
+    "boss": false
+  },
+  {
+    "code": 2340506,
+    "name": "M_FE_Common_Racing_Turret_10_001",
     "boss": false
   },
   {
@@ -13720,6 +14280,11 @@
     "code": 2345107,
     "name": "그란디오스",
     "boss": true
+  },
+  {
+    "code": 2345203,
+    "name": "M_FE_Common_Electrosphere_01_V01_001",
+    "boss": false
   },
   {
     "code": 2345601,
@@ -15117,8 +15682,33 @@
     "boss": false
   },
   {
+    "code": 2370032,
+    "name": "M_Draconic_001_Easy_Laser_02",
+    "boss": false
+  },
+  {
+    "code": 2370033,
+    "name": "M_Draconic_001_Easy_Poison_01_001",
+    "boss": false
+  },
+  {
     "code": 2370034,
     "name": "브리트라 비행 정찰병",
+    "boss": false
+  },
+  {
+    "code": 2370035,
+    "name": "M_Draconic_001_Buff_ChatNotice_01",
+    "boss": false
+  },
+  {
+    "code": 2370036,
+    "name": "M_Draconic_001_Buff_ChatNotice_02",
+    "boss": false
+  },
+  {
+    "code": 2370037,
+    "name": "M_Draconic_001_Buff_ChatNotice_03",
     "boss": false
   },
   {
@@ -15274,6 +15864,16 @@
   {
     "code": 2370068,
     "name": "드레드기온 파프니움 변환기",
+    "boss": false
+  },
+  {
+    "code": 2370069,
+    "name": "M_Draconic_001_Normal_Laser_02",
+    "boss": false
+  },
+  {
+    "code": 2370070,
+    "name": "M_Draconic_001_Normal_Poison_01_001",
     "boss": false
   },
   {
@@ -15437,8 +16037,33 @@
     "boss": false
   },
   {
+    "code": 2370103,
+    "name": "M_Draconic_001_Hard_Laser_02",
+    "boss": false
+  },
+  {
+    "code": 2370104,
+    "name": "M_Draconic_001_Hard_Poison_01_001",
+    "boss": false
+  },
+  {
     "code": 2370105,
     "name": "브리트라 비행 정찰병",
+    "boss": false
+  },
+  {
+    "code": 2370106,
+    "name": "M_Draconic_001_Easy_Rockfall_01",
+    "boss": false
+  },
+  {
+    "code": 2370107,
+    "name": "M_Draconic_001_Normal_Rockfall_01",
+    "boss": false
+  },
+  {
+    "code": 2370108,
+    "name": "M_Draconic_001_Hard_Rockfall_01",
     "boss": false
   },
   {
@@ -15472,13 +16097,43 @@
     "boss": false
   },
   {
+    "code": 2370207,
+    "name": "M_Draconic_002_Easy_Laser_02",
+    "boss": false
+  },
+  {
     "code": 2370208,
     "name": "마법 장치",
     "boss": false
   },
   {
+    "code": 2370209,
+    "name": "M_Draconic_002_Easy_Poison_01_001",
+    "boss": false
+  },
+  {
+    "code": 2370210,
+    "name": "M_Draconic_002_Easy_Meteor_01",
+    "boss": false
+  },
+  {
     "code": 2370211,
     "name": "브리트라 비행 정찰병",
+    "boss": false
+  },
+  {
+    "code": 2370212,
+    "name": "M_Draconic_002_Easy_Buff_ChatNotice_001",
+    "boss": false
+  },
+  {
+    "code": 2370213,
+    "name": "M_Draconic_002_Easy_Buff_ChatNotice_002",
+    "boss": false
+  },
+  {
+    "code": 2370214,
+    "name": "M_Draconic_002_Easy_Buff_ChatNotice_003",
     "boss": false
   },
   {
@@ -15542,13 +16197,43 @@
     "boss": false
   },
   {
+    "code": 2370227,
+    "name": "M_Draconic_002_Normal_Laser_02",
+    "boss": false
+  },
+  {
     "code": 2370228,
     "name": "마법 장치",
     "boss": false
   },
   {
+    "code": 2370229,
+    "name": "M_Draconic_002_Normal_Poison_01_001",
+    "boss": false
+  },
+  {
+    "code": 2370230,
+    "name": "M_Draconic_002_Normal_Meteor_01",
+    "boss": false
+  },
+  {
     "code": 2370231,
     "name": "브리트라 비행 정찰병",
+    "boss": false
+  },
+  {
+    "code": 2370232,
+    "name": "M_Draconic_002_Normal_Buff_ChatNotice_001",
+    "boss": false
+  },
+  {
+    "code": 2370233,
+    "name": "M_Draconic_002_Normal_Buff_ChatNotice_002",
+    "boss": false
+  },
+  {
+    "code": 2370234,
+    "name": "M_Draconic_002_Normal_Buff_ChatNotice_003",
     "boss": false
   },
   {
@@ -15612,13 +16297,43 @@
     "boss": false
   },
   {
+    "code": 2370247,
+    "name": "M_Draconic_002_Hard_Laser_02",
+    "boss": false
+  },
+  {
     "code": 2370248,
     "name": "마법 장치",
     "boss": false
   },
   {
+    "code": 2370249,
+    "name": "M_Draconic_002_Hard_Poison_01_001",
+    "boss": false
+  },
+  {
+    "code": 2370250,
+    "name": "M_Draconic_002_Hard_Meteor_01",
+    "boss": false
+  },
+  {
     "code": 2370251,
     "name": "브리트라 비행 정찰병",
+    "boss": false
+  },
+  {
+    "code": 2370252,
+    "name": "M_Draconic_002_Hard_Buff_ChatNotice_001",
+    "boss": false
+  },
+  {
+    "code": 2370253,
+    "name": "M_Draconic_002_Hard_Buff_ChatNotice_002",
+    "boss": false
+  },
+  {
+    "code": 2370254,
+    "name": "M_Draconic_002_Hard_Buff_ChatNotice_003",
     "boss": false
   },
   {
@@ -15762,6 +16477,16 @@
     "boss": true
   },
   {
+    "code": 2370405,
+    "name": "M_Draconic_004_Easy_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370406,
+    "name": "M_Draconic_004_Easy_Crack_01",
+    "boss": false
+  },
+  {
     "code": 2370407,
     "name": "드레드기온 대형 토템",
     "boss": false
@@ -15872,6 +16597,11 @@
     "boss": false
   },
   {
+    "code": 2370429,
+    "name": "M_Draconic_004_Easy_HydroVent_01_002",
+    "boss": false
+  },
+  {
     "code": 2370430,
     "name": "군수사령관 아드비르",
     "boss": true
@@ -15890,6 +16620,16 @@
     "code": 2370433,
     "name": "자원기지 정찰부대장",
     "boss": true
+  },
+  {
+    "code": 2370434,
+    "name": "M_Draconic_004_Normal_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370435,
+    "name": "M_Draconic_004_Normal_Crack_01",
+    "boss": false
   },
   {
     "code": 2370436,
@@ -16002,6 +16742,11 @@
     "boss": false
   },
   {
+    "code": 2370458,
+    "name": "M_Draconic_004_Normal_HydroVent_01_002",
+    "boss": false
+  },
+  {
     "code": 2370460,
     "name": "군수사령관 아드비르",
     "boss": true
@@ -16020,6 +16765,16 @@
     "code": 2370463,
     "name": "자원기지 정찰부대장",
     "boss": true
+  },
+  {
+    "code": 2370464,
+    "name": "M_Draconic_004_Hard_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370465,
+    "name": "M_Draconic_004_Hard_Crack_01",
+    "boss": false
   },
   {
     "code": 2370466,
@@ -16132,6 +16887,11 @@
     "boss": false
   },
   {
+    "code": 2370488,
+    "name": "M_Draconic_004_Hard_HydroVent_01_002",
+    "boss": false
+  },
+  {
     "code": 2370502,
     "name": "군수사령관 아드비르",
     "boss": true
@@ -16150,6 +16910,16 @@
     "code": 2370505,
     "name": "자원기지 정찰부대장",
     "boss": true
+  },
+  {
+    "code": 2370506,
+    "name": "M_Draconic_005_Easy_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370507,
+    "name": "M_Draconic_005_Easy_Laser_01_001",
+    "boss": false
   },
   {
     "code": 2370508,
@@ -16297,6 +17067,16 @@
     "boss": true
   },
   {
+    "code": 2370537,
+    "name": "M_Draconic_005_Normal_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370538,
+    "name": "M_Draconic_005_Normal_Laser_01_001",
+    "boss": false
+  },
+  {
     "code": 2370539,
     "name": "제련소 경보 장치",
     "boss": false
@@ -16442,6 +17222,16 @@
     "boss": true
   },
   {
+    "code": 2370568,
+    "name": "M_Draconic_005_Hard_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370569,
+    "name": "M_Draconic_005_Hard_Laser_01_001",
+    "boss": false
+  },
+  {
     "code": 2370570,
     "name": "제련소 경보 장치",
     "boss": false
@@ -16567,6 +17357,11 @@
     "boss": false
   },
   {
+    "code": 2370595,
+    "name": "M_Draconic_005_Tornado_01_CV01_001",
+    "boss": false
+  },
+  {
     "code": 2370700,
     "name": "군수사령관 아드비르",
     "boss": true
@@ -16585,6 +17380,16 @@
     "code": 2370703,
     "name": "자원기지 정찰부대장",
     "boss": true
+  },
+  {
+    "code": 2370704,
+    "name": "M_Draconic_004_Extreme_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370705,
+    "name": "M_Draconic_004_Extreme_Crack_01",
+    "boss": false
   },
   {
     "code": 2370706,
@@ -16697,6 +17502,11 @@
     "boss": false
   },
   {
+    "code": 2370728,
+    "name": "M_Draconic_004_Extreme_HydroVent_01_002",
+    "boss": false
+  },
+  {
     "code": 2370735,
     "name": "군수사령관 아드비르",
     "boss": true
@@ -16715,6 +17525,16 @@
     "code": 2370738,
     "name": "자원기지 정찰부대장",
     "boss": true
+  },
+  {
+    "code": 2370739,
+    "name": "M_Draconic_004_Despair_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370740,
+    "name": "M_Draconic_004_Despair_Crack_01",
+    "boss": false
   },
   {
     "code": 2370741,
@@ -16827,6 +17647,11 @@
     "boss": false
   },
   {
+    "code": 2370763,
+    "name": "M_Draconic_004_Despair_HydroVent_01_002",
+    "boss": false
+  },
+  {
     "code": 2370770,
     "name": "군수사령관 아드비르",
     "boss": true
@@ -16845,6 +17670,16 @@
     "code": 2370773,
     "name": "자원기지 정찰부대장",
     "boss": true
+  },
+  {
+    "code": 2370774,
+    "name": "M_Draconic_004_Hell_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370775,
+    "name": "M_Draconic_004_Hell_Crack_01",
+    "boss": false
   },
   {
     "code": 2370776,
@@ -16957,6 +17792,11 @@
     "boss": false
   },
   {
+    "code": 2370798,
+    "name": "M_Draconic_004_Hell_HydroVent_01_002",
+    "boss": false
+  },
+  {
     "code": 2370800,
     "name": "군수사령관 아드비르",
     "boss": true
@@ -16975,6 +17815,16 @@
     "code": 2370803,
     "name": "자원기지 정찰부대장",
     "boss": true
+  },
+  {
+    "code": 2370804,
+    "name": "M_Draconic_005_Extreme_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370805,
+    "name": "M_Draconic_005_Extreme_Laser_01_001",
+    "boss": false
   },
   {
     "code": 2370806,
@@ -17122,6 +17972,16 @@
     "boss": true
   },
   {
+    "code": 2370835,
+    "name": "M_Draconic_005_Despair_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370836,
+    "name": "M_Draconic_005_Despair_Laser_01_001",
+    "boss": false
+  },
+  {
     "code": 2370837,
     "name": "제련소 경보 장치",
     "boss": false
@@ -17265,6 +18125,16 @@
     "code": 2370865,
     "name": "자원기지 정찰부대장",
     "boss": true
+  },
+  {
+    "code": 2370866,
+    "name": "M_Draconic_005_Hell_Electrosphere_01",
+    "boss": false
+  },
+  {
+    "code": 2370867,
+    "name": "M_Draconic_005_Hell_Laser_01_001",
+    "boss": false
   },
   {
     "code": 2370868,
@@ -20227,6 +21097,11 @@
     "code": 2405194,
     "name": "지휘 장교 라트리마",
     "boss": true
+  },
+  {
+    "code": 2405195,
+    "name": "M_D1_Dragon02_FireTemple_Meteor_01",
+    "boss": false
   },
   {
     "code": 2405196,
@@ -24171,6 +25046,141 @@
     "boss": false
   },
   {
+    "code": 2680001,
+    "name": "M_BF_A_1_Buff_Invisible_001",
+    "boss": false
+  },
+  {
+    "code": 2680002,
+    "name": "M_BF_A_1_BombSkill_Invisible_001",
+    "boss": false
+  },
+  {
+    "code": 2680003,
+    "name": "M_BF_A_1_SpawnTornado_Invisible_001",
+    "boss": false
+  },
+  {
+    "code": 2680004,
+    "name": "M_BF_A_1_BombSkill_Invisible_002",
+    "boss": false
+  },
+  {
+    "code": 2680005,
+    "name": "M_BF_A_1_BombSkill_Invisible_003",
+    "boss": false
+  },
+  {
+    "code": 2680006,
+    "name": "M_BF_A_1_BombSkill_Invisible_004",
+    "boss": false
+  },
+  {
+    "code": 2680007,
+    "name": "M_BF_A_1_BombSkill_Invisible_005",
+    "boss": false
+  },
+  {
+    "code": 2680008,
+    "name": "M_BF_A_1_BombSkill_Invisible_006",
+    "boss": false
+  },
+  {
+    "code": 2680009,
+    "name": "M_BF_A_1_BombSkill_Invisible_007",
+    "boss": false
+  },
+  {
+    "code": 2680010,
+    "name": "M_BF_A_1_BombSkill_Invisible_008",
+    "boss": false
+  },
+  {
+    "code": 2680011,
+    "name": "M_BF_A_1_BombSkill_Invisible_009",
+    "boss": false
+  },
+  {
+    "code": 2680012,
+    "name": "M_BF_A_1_BombSkill_Invisible_010",
+    "boss": false
+  },
+  {
+    "code": 2680013,
+    "name": "M_BF_A_1_BombSkill_Invisible_011",
+    "boss": false
+  },
+  {
+    "code": 2680014,
+    "name": "M_BF_A_1_BombSkill_Invisible_012",
+    "boss": false
+  },
+  {
+    "code": 2680016,
+    "name": "M_BF_A_1_Tornado_Invisible_Npc_01",
+    "boss": false
+  },
+  {
+    "code": 2680017,
+    "name": "M_BF_A_1_Tornado_Invisible_Npc_02",
+    "boss": false
+  },
+  {
+    "code": 2680018,
+    "name": "M_BF_B_1_CTF_ScoreCheck_Blue_Invisible",
+    "boss": false
+  },
+  {
+    "code": 2680019,
+    "name": "M_BF_B_1_CTF_ScoreCheck_Red_Invisible",
+    "boss": false
+  },
+  {
+    "code": 2680020,
+    "name": "M_BF_B_1_CTF_Score_Blue_Invisible",
+    "boss": false
+  },
+  {
+    "code": 2680021,
+    "name": "M_BF_B_1_CTF_Score_Red_Invisible",
+    "boss": false
+  },
+  {
+    "code": 2680022,
+    "name": "M_BF_B_1_CTF_Spawn_Blue_Spawn",
+    "boss": false
+  },
+  {
+    "code": 2680023,
+    "name": "M_BF_B_1_CTF_Spawn_Red_Spawn",
+    "boss": false
+  },
+  {
+    "code": 2680024,
+    "name": "M_BF_B_1_CTF_AbnormalVolume_OnOff",
+    "boss": false
+  },
+  {
+    "code": 2680025,
+    "name": "M_BF_B_1_Buff_Invisible_001",
+    "boss": false
+  },
+  {
+    "code": 2680026,
+    "name": "M_BF_B_1_BombSkill_Invisible_001",
+    "boss": false
+  },
+  {
+    "code": 2680027,
+    "name": "M_BF_B_1_CTF_Snow_Message_Invisible",
+    "boss": false
+  },
+  {
+    "code": 2680028,
+    "name": "M_BF_B_1_CTF_Flag_Spawn_Message_Invisible",
+    "boss": false
+  },
+  {
     "code": 2700000,
     "name": "수라 기사",
     "boss": false
@@ -24556,6 +25566,11 @@
     "boss": false
   },
   {
+    "code": 2700621,
+    "name": "M_L1_StrigikAltar_Poison_02_001",
+    "boss": false
+  },
+  {
     "code": 2700622,
     "name": "환혼의 돌",
     "boss": false
@@ -24573,6 +25588,26 @@
   {
     "code": 2700625,
     "name": "지배의 돌",
+    "boss": false
+  },
+  {
+    "code": 2700684,
+    "name": "M_L1_DungeonCommon_CameraShake_01",
+    "boss": false
+  },
+  {
+    "code": 2700685,
+    "name": "M_L1_DungeonCommon_CameraShake_02",
+    "boss": false
+  },
+  {
+    "code": 2700686,
+    "name": "M_L1_StrigikAltar_HangingOwl_01_001",
+    "boss": false
+  },
+  {
+    "code": 2700687,
+    "name": "M_L1_DungeonCommon_CameraShake_03",
     "boss": false
   },
   {
@@ -24761,6 +25796,11 @@
     "boss": true
   },
   {
+    "code": 2700746,
+    "name": "M_L1_StrigikAltar_Owlapri_01_Die_001",
+    "boss": true
+  },
+  {
     "code": 2700747,
     "name": "요새의 아칸 원혼",
     "boss": false
@@ -24809,6 +25849,11 @@
     "code": 2700845,
     "name": "이드리스",
     "boss": true
+  },
+  {
+    "code": 2700846,
+    "name": "M_D1_Dungeon_D_0001_Invisible_01",
+    "boss": false
   },
   {
     "code": 2700847,
@@ -26156,6 +27201,11 @@
     "boss": true
   },
   {
+    "code": 2701203,
+    "name": "M_Seal_Verteron_046_Totem_01",
+    "boss": false
+  },
+  {
     "code": 2701204,
     "name": "크랄 간수",
     "boss": false
@@ -26288,6 +27338,11 @@
   {
     "code": 2701235,
     "name": "무법자 레기온 전사",
+    "boss": false
+  },
+  {
+    "code": 2701236,
+    "name": "M_SealAdvanced_0001_InvisibleNPC_01",
     "boss": false
   },
   {
@@ -27912,6 +28967,11 @@
     "boss": false
   },
   {
+    "code": 2701634,
+    "name": "M_Seal_Verteron_059_Turret_01_01",
+    "boss": false
+  },
+  {
     "code": 2701635,
     "name": "독주머니",
     "boss": false
@@ -28534,6 +29594,21 @@
   {
     "code": 2701770,
     "name": "이슈타르 부대 드라칸",
+    "boss": false
+  },
+  {
+    "code": 2701771,
+    "name": "M_Dungeon_0005_InvisibleNpc_001",
+    "boss": false
+  },
+  {
+    "code": 2701772,
+    "name": "M_Dungeon_0005_InvisibleNpc_002",
+    "boss": false
+  },
+  {
+    "code": 2701773,
+    "name": "M_Dungeon_0005_InvisibleNpc_003",
     "boss": false
   },
   {
@@ -29847,6 +30922,31 @@
     "boss": true
   },
   {
+    "code": 2702112,
+    "name": "M_Dungeon_0005_InvisibleNpc_004",
+    "boss": false
+  },
+  {
+    "code": 2702113,
+    "name": "M_Dungeon_0005_InvisibleNpc_005",
+    "boss": false
+  },
+  {
+    "code": 2702114,
+    "name": "M_Dungeon_0005_InvisibleNpc_006",
+    "boss": false
+  },
+  {
+    "code": 2702115,
+    "name": "M_Dungeon_0005_InvisibleNpc_007",
+    "boss": false
+  },
+  {
+    "code": 2702116,
+    "name": "M_Dungeon_0005_InvisibleNpc_008",
+    "boss": false
+  },
+  {
     "code": 2702174,
     "name": "불안정한 오디움 원석",
     "boss": false
@@ -30327,6 +31427,11 @@
     "boss": false
   },
   {
+    "code": 2920028,
+    "name": "Skill_Target_Monster",
+    "boss": false
+  },
+  {
     "code": 2920029,
     "name": "변이 아울라우 수호자",
     "boss": false
@@ -30337,6 +31442,11 @@
     "boss": false
   },
   {
+    "code": 2920031,
+    "name": "Skill_Target_Monster_Neutral",
+    "boss": false
+  },
+  {
     "code": 2920032,
     "name": "변이 아울라우 수호자",
     "boss": false
@@ -30344,6 +31454,11 @@
   {
     "code": 2920033,
     "name": "중형 괴물",
+    "boss": false
+  },
+  {
+    "code": 2920037,
+    "name": "N_Invisible_Summon_Seal4_Damage_01_001",
     "boss": false
   },
   {
@@ -30379,6 +31494,11 @@
   {
     "code": 2920201,
     "name": "화염 지대",
+    "boss": false
+  },
+  {
+    "code": 2920210,
+    "name": "M_Summon_SmallOdSpider_02",
     "boss": false
   },
   {
@@ -30467,6 +31587,11 @@
     "boss": false
   },
   {
+    "code": 2920365,
+    "name": "N_Invisible_Summon_SuraMag_01_V01_001",
+    "boss": false
+  },
+  {
     "code": 2920367,
     "name": "바크론의 가시덩굴",
     "boss": true
@@ -30552,6 +31677,11 @@
     "boss": false
   },
   {
+    "code": 2920518,
+    "name": "N_Summon_Thalythra_01_001",
+    "boss": false
+  },
+  {
     "code": 2920586,
     "name": "자식 20/Exceed/None",
     "boss": false
@@ -30577,6 +31707,11 @@
     "boss": false
   },
   {
+    "code": 2920636,
+    "name": "N_Invisible_Summon_Tornado_01_V01_001",
+    "boss": false
+  },
+  {
     "code": 2920663,
     "name": "바크론의 가시속박",
     "boss": false
@@ -30592,6 +31727,11 @@
     "boss": false
   },
   {
+    "code": 2920896,
+    "name": "Basic_M_Common_Cherubim_02_001_UI",
+    "boss": false
+  },
+  {
     "code": 2920906,
     "name": "바위",
     "boss": false
@@ -30599,7 +31739,7 @@
   {
     "code": 2920908,
     "name": "유압 프레스",
-    "boss": false
+    "boss": true
   },
   {
     "code": 2920924,
@@ -30619,7 +31759,7 @@
   {
     "code": 2920973,
     "name": "뉴트",
-    "boss": false
+    "boss": true
   },
   {
     "code": 2921008,
@@ -30659,7 +31799,7 @@
   {
     "code": 2921031,
     "name": "깨어난 알투라돈",
-    "boss": false
+    "boss": true
   },
   {
     "code": 2921044,
