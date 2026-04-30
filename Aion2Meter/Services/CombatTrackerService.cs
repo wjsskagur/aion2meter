@@ -175,6 +175,9 @@ public class CombatTrackerService : IDisposable
             if (_confirmedPlayerIds.ContainsKey(evt.TargetId)) return;
             if (_nameCache.ContainsKey(evt.TargetId) && !_confirmedMobIds.ContainsKey(evt.TargetId)) return;
 
+            // 확인된 몬스터는 공격자로 처리하지 않음 (몬스터→몬스터 데미지 제외)
+            if (_confirmedMobIds.ContainsKey(evt.AttackerId)) return;
+
             // ── 세션 시작 ────────────────────────────────────────────
             if (_currentSession == null || !_currentSession.IsActive)
             {
@@ -194,10 +197,16 @@ public class CombatTrackerService : IDisposable
 
             var session = _currentSession!;
 
-            // FilterByKnownPlayers=ON : 이름이 확인된 플레이어(파티원)만 표시
-            // 단, 본인(LocalPlayerId)은 닉네임 패킷 수신 여부와 무관하게 항상 표시
+            // FilterByKnownPlayers=ON : ENTITY 패킷으로 확인된 플레이어(파티원)만 표시
+            // 단, 본인(LocalPlayerId)은 항상 표시
+            // 예외: 아직 ENTITY 패킷이 한 건도 수신되지 않은 경우(미터기 시작 전 입장 등)
+            //   → 필터를 완화해 확인된 몬스터가 아닌 모든 공격자를 허용
             bool isLocalPlayer = LocalPlayerId != 0 && evt.AttackerId == LocalPlayerId;
-            if (FilterByKnownPlayers && !isLocalPlayer && !_nameCache.ContainsKey(evt.AttackerId)) return;
+            if (FilterByKnownPlayers && !isLocalPlayer && !_nameCache.ContainsKey(evt.AttackerId))
+            {
+                if (_confirmedPlayerIds.Count > 0) return;
+                // _confirmedPlayerIds가 비어있으면: 이미 위에서 _confirmedMobIds 체크로 몬스터 제외됨
+            }
 
             if (session.Events.Count >= 5000)
                 session.Events.RemoveAt(0);

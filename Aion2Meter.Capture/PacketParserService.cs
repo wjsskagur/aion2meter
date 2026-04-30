@@ -616,15 +616,19 @@ public class PacketParserService
             isBoss  = false;
         }
 
-        // 허수아비/샌드백(훈련용 더미): DPS 추적 완전 차단
+        // 허수아비/샌드백(훈련용 더미): HP 바만 차단, DPS 측정은 허용
         if (mobName.Contains("허수아비") || mobName.Contains("샌드백"))
         {
-            _confirmedMobIds.TryRemove(entityInfo.value, out _);
-            // 파서 측 _confirmedPlayerIds 등록 → ParseBossHp 필터에서 HP 패킷 무시
+            // 파서 측 _confirmedPlayerIds 등록 → ParseBossHp가 HP 패킷 무시 (HP 바 미표시)
             _confirmedPlayerIds.TryAdd(entityInfo.value, 0);
-            // 트래커 측 _confirmedPlayerIds 등록 → ProcessEvent의 타겟 필터가 차단
-            OnEntityInfoEvent?.Invoke(((uint)entityInfo.value, mobName, false, -1));
-            return false;
+            // OnEntityInfoEvent는 발행하지 않음
+            // → 트래커의 _confirmedPlayerIds에 등록되지 않음
+            // → 허수아비 타겟 데미지가 차단되지 않음 (DPS 측정 가능)
+            // OnSpawnEvent 정상 발행 → 트래커가 mob으로 등록, 데미지 집계 가능
+            _entityNames[entityInfo.value] = mobName;
+            Console.WriteLine($"[SPAWN-DUMMY] entityId={entityInfo.value} name={mobName}");
+            OnSpawnEvent?.Invoke(((uint)entityInfo.value, mobName, false));
+            return true;
         }
 
         _entityNames[entityInfo.value] = mobName;
