@@ -44,6 +44,12 @@ public class PlayerStats
 
     /// <summary>본인(로컬 플레이어) 여부 → UI에서 초록색으로 표시</summary>
     public bool IsLocalPlayer { get; set; }
+
+    /// <summary>서버 ID (1001~1021 이스라엘계, 2001~2021 아스모디안계)</summary>
+    public int ServerId { get; set; } = -1;
+
+    /// <summary>전투력 (Plaync API 조회 결과)</summary>
+    public int CombatPower { get; set; }
 }
 
 /// <summary>스킬 1개의 누적 통계</summary>

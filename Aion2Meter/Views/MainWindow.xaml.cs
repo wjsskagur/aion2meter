@@ -197,8 +197,10 @@ public partial class MainWindow : Window
         Width   = s.WindowWidth;
         Opacity = s.Opacity;
         Topmost = s.AlwaysOnTop;
-        // 컴팩트 모드: 행 높이 조정
         _vm.NotifyChanged(nameof(MainViewModel.RowHeight));
+        _vm.NotifyChanged(nameof(MainViewModel.NameFontSize));
+        _vm.NotifyChanged(nameof(MainViewModel.DamageFontSize));
+        _vm.NotifyChanged(nameof(MainViewModel.DpsFontSize));
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)

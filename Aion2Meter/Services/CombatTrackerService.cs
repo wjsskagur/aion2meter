@@ -23,8 +23,105 @@ public class CombatTrackerService : IDisposable
     // 닉네임 캐시: 패킷 수신 순서와 무관하게 이름을 보존
     private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, string> _nameCache = new();
 
-    // 공격자로 등장한 ID = 플레이어 (닉네임 패킷 없어도 플레이어 판별)
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, byte> _knownPlayerIds = new();
+    // 서버 ID 캐시: Plaync API 조회에 사용
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, int> _serverIdCache = new();
+
+    // SPAWN/ENTITY 패킷 기반 확정 분류 (A2Viewer ActorStats.IsPlayer 방식)
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, byte> _confirmedPlayerIds = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, byte> _confirmedMobIds    = new();
+
+    // 소환수 → 주인 매핑 (A2Viewer TryParseSummon)
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<uint, uint> _summons = new();
+
+    /// <summary>ENTITY 패킷 수신 시 플레이어로 등록</summary>
+    public void RegisterPlayer(uint entityId)   => _confirmedPlayerIds.TryAdd(entityId, 0);
+
+    /// <summary>SPAWN 패킷 수신 시 몬스터로 등록</summary>
+    public void RegisterMob(uint entityId)      => _confirmedMobIds.TryAdd(entityId, 0);
+
+    /// <summary>소환수 등록 (소환수의 피해를 주인에게 귀속)</summary>
+    public void RegisterSummon(uint summonId, uint ownerId)
+    {
+        _summons[summonId] = ownerId;
+        _confirmedPlayerIds.TryAdd(summonId, 0);
+    }
+
+    /// <summary>엔티티 제거 (몬스터 사망/해제 시 호출)</summary>
+    public void EntityRemoved(uint entityId)
+    {
+        _confirmedMobIds.TryRemove(entityId, out _);
+        _summons.TryRemove(entityId, out _);
+    }
+
+    /// <summary>서버 ID 등록 (Plaync API 조회에 사용)</summary>
+    public void RegisterServerId(uint entityId, int serverId)
+    {
+        if (serverId <= 0) return;
+        _serverIdCache[entityId] = serverId;
+        lock (_lock)
+        {
+            if (_currentSession?.Players.TryGetValue(entityId, out var p) == true)
+                p.ServerId = serverId;
+        }
+    }
+
+    /// <summary>Plaync API 조회 결과로 플레이어 전투력 업데이트</summary>
+    public void UpdatePlayerCombatPower(uint entityId, int cp)
+    {
+        if (cp <= 0) return;
+        lock (_lock)
+        {
+            if (_currentSession?.Players.TryGetValue(entityId, out var p) == true)
+                p.CombatPower = cp;
+        }
+    }
+
+    /// <summary>서버 ID가 있는 미확인 플레이어 목록 반환 (API 조회 트리거용)</summary>
+    public IEnumerable<(uint entityId, string name, int serverId)> GetPlayersNeedingLookup()
+    {
+        lock (_lock)
+        {
+            if (_currentSession == null) yield break;
+            foreach (var kv in _currentSession.Players)
+            {
+                if (kv.Value.CombatPower > 0) continue;          // 이미 조회됨
+                if (!_serverIdCache.TryGetValue(kv.Key, out var sid) || sid <= 0) continue;
+                if (!_nameCache.TryGetValue(kv.Key, out var name)) continue;
+                if (name.StartsWith("플레이어_") || System.Text.RegularExpressions.Regex.IsMatch(
+                    name, @"^(검성|수호성|살성|궁성|마도성|정령성|치유성|호법성)\d*$")) continue;
+                yield return (kv.Key, name, sid);
+            }
+        }
+    }
+
+    /// <summary>
+    /// CP 패킷 닉네임 등록. entityId 없이 이름만 수신될 때,
+    /// 현재 세션에서 직업명으로만 표시되는 미확인 플레이어에 매핑 시도.
+    /// </summary>
+    public void RegisterCpName(string nick)
+    {
+        if (string.IsNullOrEmpty(nick)) return;
+        // 이미 이 닉네임이 캐시에 있으면 중복 처리 불필요
+        if (_nameCache.Values.Contains(nick)) return;
+
+        lock (_lock)
+        {
+            if (_currentSession == null) return;
+            // 현재 세션에서 아직 실명이 없는 플레이어 중 하나에 할당
+            // (복수 미확인자가 있으면 순서대로 할당 - 불완전하지만 없는 것보다 낫다)
+            foreach (var kv in _currentSession.Players)
+            {
+                if (_nameCache.ContainsKey(kv.Key)) continue;
+                if (!kv.Value.Name.StartsWith("플레이어_") &&
+                    !System.Text.RegularExpressions.Regex.IsMatch(kv.Value.Name, @"^(검성|수호성|살성|궁성|마도성|정령성|치유성|호법성)\d*$"))
+                    continue;
+                // 직업명이나 플레이어_XXX인 경우 실명으로 교체
+                _nameCache[kv.Key] = nick;
+                kv.Value.Name = nick;
+                break;
+            }
+        }
+    }
 
     // 자동 종료: 마지막 데미지 이후 N초 무활동
     private DateTime _lastDamageTime = DateTime.MinValue;
@@ -64,12 +161,17 @@ public class CombatTrackerService : IDisposable
 
         lock (_lock)
         {
-            // 공격자로 등장한 ID는 플레이어로 기록
-            _knownPlayerIds.TryAdd(evt.AttackerId, 0);
+            // 소환수 피해 → 주인에게 귀속 (A2Viewer 소환수 처리)
+            if (_summons.TryGetValue(evt.AttackerId, out var ownerId))
+            {
+                evt.AttackerId   = ownerId;
+                evt.AttackerName = _nameCache.TryGetValue(ownerId, out var ownerName) ? ownerName : evt.AttackerName;
+            }
 
-            // 타겟이 알려진 플레이어이면 무시 (몬스터→파티원, PvP 등)
-            if (_nameCache.ContainsKey(evt.TargetId)) return;
-            if (_knownPlayerIds.ContainsKey(evt.TargetId)) return;
+            // 타겟이 확정된 플레이어이면 무시
+            // (몬스터→플레이어, 플레이어→플레이어 데미지 제외)
+            if (_confirmedPlayerIds.ContainsKey(evt.TargetId)) return;
+            if (_nameCache.ContainsKey(evt.TargetId) && !_confirmedMobIds.ContainsKey(evt.TargetId)) return;
 
             // ── 세션 시작 ────────────────────────────────────────────
             if (_currentSession == null || !_currentSession.IsActive)
@@ -173,7 +275,8 @@ public class CombatTrackerService : IDisposable
             }
             _currentSession = null;
             _totalPartyDamageCache = 0;
-            _knownPlayerIds.Clear();
+            _confirmedPlayerIds.Clear();
+            _confirmedMobIds.Clear();
         }
         if (toSave != null)
         {

@@ -16,6 +16,7 @@ public class MainViewModel : BaseViewModel
     private readonly SettingsService _settings;
     private readonly CombatUploadService _uploader = new();
     private System.Windows.Threading.DispatcherTimer? _timerRefresh;
+    private DateTime _lastApiLookup = DateTime.MinValue;
 
     // ── UI 바인딩 프로퍼티 ────────────────────────────────────
 
@@ -75,7 +76,7 @@ public class MainViewModel : BaseViewModel
     public double ElapsedSeconds => _tracker.CurrentSession?.ElapsedSeconds ?? 0;
     public AppSettings Settings => _settings.Settings;
 
-    public double RowHeight     => Settings.CompactMode ? 16 : (Settings.RowHeight > 0 ? Settings.RowHeight : 22);
+    public double RowHeight     => Settings.CompactMode ? 16 : 22;
     public double NameFontSize   => Math.Round(11 * Settings.FontScale, 1);
     public double DamageFontSize => Math.Round(10 * Settings.FontScale, 1);
     public double DpsFontSize    => Math.Round(11 * Settings.FontScale, 1);
@@ -94,12 +95,15 @@ public class MainViewModel : BaseViewModel
         _tracker = new CombatTrackerService();
 
         // 이벤트 연결 (명명된 메서드 → Cleanup에서 정확히 해제 가능)
-        _capture.OnCombatEvent += OnCombatEventReceived;
-        _capture.OnEntityInfo  += OnEntityInfoReceived;
-        _capture.OnSpawn       += OnSpawnReceived;
-        _capture.OnBossHp      += OnBossHpReceived;
-        _capture.OnError       += OnCaptureError;
-        _capture.OnStatus      += OnCaptureStatus;
+        _capture.OnCombatEvent    += OnCombatEventReceived;
+        _capture.OnEntityInfo     += OnEntityInfoReceived;
+        _capture.OnSpawn          += OnSpawnReceived;
+        _capture.OnBossHp         += OnBossHpReceived;
+        _capture.OnEntityRemoved  += OnEntityRemovedReceived;
+        _capture.OnSummon         += OnSummonReceived;
+        _capture.OnCpName         += OnCpNameReceived;
+        _capture.OnError          += OnCaptureError;
+        _capture.OnStatus         += OnCaptureStatus;
         _tracker.Players.CollectionChanged += OnPlayersChanged;
         _tracker.OnCombatEnded += OnCombatEndedForUpload;
 
@@ -132,18 +136,18 @@ public class MainViewModel : BaseViewModel
     private void OnCombatEventReceived(object? s, CombatEvent e) =>
         _tracker.ProcessEvent(e);
 
-    private void OnEntityInfoReceived(object? s, (uint entityId, string name, bool isLocalPlayer) e)
+    private void OnEntityInfoReceived(object? s, (uint entityId, string name, bool isLocalPlayer, int serverId) e)
     {
-        if (e.isLocalPlayer)
-            _tracker.LocalPlayerId = e.entityId;
+        if (e.isLocalPlayer) _tracker.LocalPlayerId = e.entityId;
+        _tracker.RegisterPlayer(e.entityId);
         _tracker.UpdateEntityName(e.entityId, e.name);
+        if (e.serverId > 0) _tracker.RegisterServerId(e.entityId, e.serverId);
     }
 
     private void OnSpawnReceived(object? s, (uint entityId, string name, bool isBoss) e)
     {
-        // 스폰 이벤트: 몬스터 이름 캐시에 저장
+        _tracker.RegisterMob(e.entityId);      // 몬스터 확정
         _tracker.UpdateEntityName(e.entityId, e.name);
-        // 보스이면 보스 이름도 업데이트
         if (e.isBoss)
             App.Current?.Dispatcher.BeginInvoke(() =>
             {
@@ -153,6 +157,30 @@ public class MainViewModel : BaseViewModel
     }
 
     private long _bossMaxHp = 0;
+
+    private void OnEntityRemovedReceived(object? s, uint entityId) =>
+        _tracker.EntityRemoved(entityId);
+
+    private void OnSummonReceived(object? s, (uint summonId, uint ownerId) e) =>
+        _tracker.RegisterSummon(e.summonId, e.ownerId);
+
+    private void OnCpNameReceived(object? s, string nick) =>
+        _tracker.RegisterCpName(nick);
+
+    // Plaync API 조회: 전투가 시작된 후 serverId가 있는 플레이어에 대해 CP를 가져옴
+    private void TriggerCombatPowerLookup()
+    {
+        foreach (var (entityId, name, serverId) in _tracker.GetPlayersNeedingLookup())
+        {
+            var eid = entityId;
+            _ = Task.Run(async () =>
+            {
+                var result = await PlayncApiService.FetchCombatPowerAsync(name, serverId);
+                if (result.HasValue)
+                    _tracker.UpdatePlayerCombatPower(eid, result.Value.cp);
+            });
+        }
+    }
 
     private void OnBossHpReceived(object? s, (uint bossId, string bossName, long currentHp, long maxHp) e)
     {
@@ -200,15 +228,15 @@ public class MainViewModel : BaseViewModel
         WriteLog("StartCapture - begin");
         StatusMessage = "캡처 초기화 중...";
 
-        // 필터 설정 적용
-        _tracker.FilterByBossTarget   = _settings.Settings.FilterByBossTarget;
+        // FilterByBossTarget은 항상 true (보스 타겟만 추적)
+        _tracker.FilterByBossTarget   = true;
         _tracker.FilterByKnownPlayers = _settings.Settings.FilterByKnownPlayers;
         _tracker.SortBy               = _settings.Settings.SortBy;
         _tracker.AutoEndSeconds       = _settings.Settings.AutoEndSeconds;
         _tracker.PinLocalPlayer       = _settings.Settings.PinLocalPlayer;
 
         WriteLog("StartCapture - calling _capture.Start");
-        _capture.Start(_settings.Settings.AionPort, _settings.Settings.ServerIp);
+        _capture.Start(_settings.Settings.AionPort);
         WriteLog("StartCapture - _capture.Start returned");
         _tracker.StartTimer();
         _timerRefresh?.Start();
@@ -285,6 +313,14 @@ public class MainViewModel : BaseViewModel
         {
             IsInCombat = false;
         }
+
+        // 전투 중 30초마다 Plaync API 조회 (serverId 확보된 플레이어 한정)
+        if (_tracker.IsInCombat &&
+            (DateTime.Now - _lastApiLookup).TotalSeconds >= 30)
+        {
+            _lastApiLookup = DateTime.Now;
+            TriggerCombatPowerLookup();
+        }
     }
 
     // ── 정리 ──────────────────────────────────────────────────
@@ -295,12 +331,15 @@ public class MainViewModel : BaseViewModel
 
     public void Cleanup()
     {
-        _capture.OnCombatEvent -= OnCombatEventReceived;
-        _capture.OnEntityInfo  -= OnEntityInfoReceived;
-        _capture.OnSpawn       -= OnSpawnReceived;
-        _capture.OnBossHp      -= OnBossHpReceived;
-        _capture.OnError       -= OnCaptureError;
-        _capture.OnStatus      -= OnCaptureStatus;
+        _capture.OnCombatEvent   -= OnCombatEventReceived;
+        _capture.OnEntityInfo    -= OnEntityInfoReceived;
+        _capture.OnSpawn         -= OnSpawnReceived;
+        _capture.OnBossHp        -= OnBossHpReceived;
+        _capture.OnEntityRemoved -= OnEntityRemovedReceived;
+        _capture.OnSummon        -= OnSummonReceived;
+        _capture.OnCpName        -= OnCpNameReceived;
+        _capture.OnError         -= OnCaptureError;
+        _capture.OnStatus        -= OnCaptureStatus;
         _tracker.Players.CollectionChanged -= OnPlayersChanged;
         _tracker.OnCombatEnded -= OnCombatEndedForUpload;
 

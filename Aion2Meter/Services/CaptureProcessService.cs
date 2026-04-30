@@ -18,9 +18,12 @@ public class CaptureProcessService : IDisposable
     private bool _disposed = false;
 
     public event EventHandler<CombatEvent>? OnCombatEvent;
-    public event EventHandler<(uint entityId, string name, bool isLocalPlayer)>? OnEntityInfo;
+    public event EventHandler<(uint entityId, string name, bool isLocalPlayer, int serverId)>? OnEntityInfo;
     public event EventHandler<(uint entityId, string name, bool isBoss)>? OnSpawn;
     public event EventHandler<(uint bossId, string bossName, long currentHp, long maxHp)>? OnBossHp;
+    public event EventHandler<uint>? OnEntityRemoved;
+    public event EventHandler<(uint summonId, uint ownerId)>? OnSummon;
+    public event EventHandler<string>? OnCpName;
     public event EventHandler<string>? OnError;
     public event EventHandler<string>? OnStatus;
 
@@ -29,29 +32,22 @@ public class CaptureProcessService : IDisposable
     /// <summary>
     /// 즉시 반환. 캡처 프로세스 실행 및 파이프 연결은 백그라운드에서 처리.
     /// </summary>
-    public void Start(int port = 13328, string? serverIp = null)
+    public void Start(int port = 13328)
     {
         if (_disposed) return;
         StopInternal();
 
         WriteLog("CaptureProcessService.Start - begin");
-
-        // serverIp를 비워두면 Capture 프로세스가 포트만으로 필터링
-        // → 던전마다 서버 IP가 바뀌어도 자동 대응
-        WriteLog($"port={port} serverIp={serverIp ?? "auto(port only)"}");
+        WriteLog($"port={port}");
 
         // 실행 파일 경로 후보 (dotnet run / Rider / 배포 모두 지원)
         var candidates = new[]
         {
-            // 1. 현재 실행 파일과 같은 폴더 (배포 환경)
             Path.Combine(AppContext.BaseDirectory, "Aion2Meter.Capture.exe"),
-            // 2. dotnet run 시 임시 폴더 → 프로세스 실행 파일 경로 기반
             Path.Combine(
                 Path.GetDirectoryName(Environment.ProcessPath ?? "") ?? "",
                 "Aion2Meter.Capture.exe"),
-            // 3. 현재 디렉터리
             Path.Combine(Directory.GetCurrentDirectory(), "Aion2Meter.Capture.exe"),
-            // 4. 로컬 Debug 빌드 경로 (dotnet run 시 AppContext.BaseDirectory = bin\Debug\net8.0-windows\win-x64\)
             Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..",
                 "Aion2Meter.Capture", "bin", "Debug", "net8.0-windows", "win-x64",
                 "Aion2Meter.Capture.exe"),
@@ -73,13 +69,12 @@ public class CaptureProcessService : IDisposable
         string pipeName = $"Aion2Meter_{Guid.NewGuid():N}";
         _cts = new CancellationTokenSource();
 
-        // Capture.exe 옆에 .dll도 있으면 dotnet으로 실행 (framework-dependent 빌드)
         string captureDll = Path.ChangeExtension(captureExe, ".dll");
         bool useDotnet = File.Exists(captureDll) && !IsNativeExecutable(captureExe);
 
         WriteLog($"useDotnet={useDotnet}, dll={captureDll}, dllExists={File.Exists(captureDll)}");
 
-        _ = Task.Run(() => RunCaptureAsync(captureExe, captureDll, useDotnet, pipeName, port, serverIp, _cts.Token));
+        _ = Task.Run(() => RunCaptureAsync(captureExe, captureDll, useDotnet, pipeName, port, _cts.Token));
     }
 
     private static void WriteLog(string msg)
@@ -144,11 +139,9 @@ public class CaptureProcessService : IDisposable
 
     private async Task RunCaptureAsync(
         string captureExe, string captureDll, bool useDotnet,
-        string pipeName, int port, string? serverIp, CancellationToken ct)
+        string pipeName, int port, CancellationToken ct)
     {
-        string args = serverIp != null
-            ? $"\"{pipeName}\" {port} {serverIp}"
-            : $"\"{pipeName}\" {port}";
+        string args = $"\"{pipeName}\" {port}";
 
         string fileName;
         string arguments;
@@ -281,10 +274,11 @@ public class CaptureProcessService : IDisposable
                     }
                     break;
                 case "entity":
-                    var entityId = root.GetProperty("entityId").GetUInt32();
+                    var entityId   = root.GetProperty("entityId").GetUInt32();
                     var entityName = root.GetProperty("name").GetString() ?? "";
-                    var isLocal = root.TryGetProperty("isLocalPlayer", out var localProp) && localProp.GetBoolean();
-                    OnEntityInfo?.Invoke(this, (entityId, entityName, isLocal));
+                    var isLocal    = root.TryGetProperty("isLocalPlayer", out var localProp) && localProp.GetBoolean();
+                    var serverId   = root.TryGetProperty("serverId", out var sidProp) ? sidProp.GetInt32() : -1;
+                    OnEntityInfo?.Invoke(this, (entityId, entityName, isLocal, serverId));
                     break;
 
                 case "spawn":
@@ -299,6 +293,19 @@ public class CaptureProcessService : IDisposable
                         root.GetProperty("bossName").GetString() ?? "",
                         root.GetProperty("currentHp").GetInt64(),
                         root.GetProperty("maxHp").GetInt64()));
+                    break;
+                case "removed":
+                    OnEntityRemoved?.Invoke(this, root.GetProperty("entityId").GetUInt32());
+                    break;
+                case "cpname":
+                    var cpNick = root.TryGetProperty("name", out var cpNameProp) ? cpNameProp.GetString() : null;
+                    if (!string.IsNullOrEmpty(cpNick))
+                        OnCpName?.Invoke(this, cpNick);
+                    break;
+                case "summon":
+                    OnSummon?.Invoke(this, (
+                        root.GetProperty("summonId").GetUInt32(),
+                        root.GetProperty("ownerId").GetUInt32()));
                     break;
                 case "status":
                     NotifyStatus(root.GetProperty("message").GetString() ?? "");

@@ -87,6 +87,22 @@
                 <Slider Minimum="240" Maximum="600"
                         Value="{Binding Settings.WindowWidth}"
                         TickFrequency="10" IsSnapToTickEnabled="True"
+                        Foreground="{StaticResource AccentBrush}"
+                        Margin="0,0,0,8"/>
+
+                <!-- 폰트 크기 -->
+                <Grid Margin="0,0,0,4">
+                    <TextBlock Text="폰트 크기"
+                               FontFamily="{StaticResource GameFont}"
+                               Foreground="White"/>
+                    <TextBlock HorizontalAlignment="Right"
+                               FontFamily="{StaticResource GameFont}"
+                               Text="{Binding Settings.FontScale, StringFormat={}{0:P0}}"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </Grid>
+                <Slider Minimum="0.7" Maximum="1.5"
+                        Value="{Binding Settings.FontScale}"
+                        TickFrequency="0.1" IsSnapToTickEnabled="True"
                         Foreground="{StaticResource AccentBrush}"/>
             </StackPanel>
 
@@ -98,7 +114,7 @@
                            Foreground="{StaticResource TextSecondaryBrush}"
                            Margin="0,0,0,8"/>
 
-                <!-- 파티원만 표시 -->
+                <!-- 닉네임 확인된 플레이어만 -->
                 <Grid Margin="0,0,0,4">
                     <TextBlock Text="파티원만 표시"
                                FontFamily="{StaticResource GameFont}"
@@ -106,10 +122,10 @@
                     <CheckBox HorizontalAlignment="Right"
                               IsChecked="{Binding Settings.FilterByKnownPlayers}"/>
                 </Grid>
-                <TextBlock Text="해제 시 보스를 공격한 모든 플레이어 표시"
-                           FontSize="10" Margin="0,0,0,8"
+                <TextBlock FontSize="10" Margin="0,0,0,8"
                            FontFamily="{StaticResource GameFont}"
-                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Text="ON: 닉네임 패킷 수신된 플레이어만 표시&#x0a;OFF: 보스를 공격한 모든 플레이어 표시"/>
 
                 <!-- 내 캐릭터 상단 고정 -->
                 <Grid Margin="0,0,0,8">
