@@ -17,7 +17,7 @@ public class AppSettings
     /// (ENTITY 패킷 수신 기준 - 파티원 + 닉네임 패킷 받은 레이드 인원)
     /// OFF = 보스를 공격한 모든 공격자 표시
     /// </summary>
-    public bool   FilterByKnownPlayers { get; set; } = false;
+    public bool   FilterByKnownPlayers { get; set; } = true;
     public bool   PinLocalPlayer       { get; set; } = false;
     public int    AutoEndSeconds       { get; set; } = 10;
     public string SortBy               { get; set; } = "TotalDamage";

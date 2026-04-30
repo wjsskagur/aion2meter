@@ -91,7 +91,7 @@
                     Padding="10,6"
                     Cursor="Hand"
                     MouseLeftButtonDown="BossArea_Click"
-                    Visibility="{Binding IsInCombat, Converter={StaticResource BoolToVisibility}}">
+                    Visibility="{Binding IsBossActive, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>
                     <Grid>
                         <TextBlock Text="{Binding BossName}"
@@ -251,24 +251,14 @@
                                FontSize="9"
                                FontFamily="{StaticResource GameFont}"
                                Foreground="{StaticResource TextSecondaryBrush}"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <TextBlock Text="v1.0 "
-                                   FontSize="9"
-                                   FontFamily="{StaticResource GameFont}"
-                                   Foreground="{StaticResource TextSecondaryBrush}"/>
-                        <TextBlock Text="{Binding IsCapturing}"
-                                   FontSize="9"
-                                   FontFamily="{StaticResource GameFont}"
-                                   Foreground="{StaticResource AccentBrush}"/>
-                        <!-- 리사이즈 그립 -->
-                        <TextBlock Text="◢" FontSize="10"
-                                   Margin="6,0,0,0"
-                                   Cursor="SizeWE"
-                                   Foreground="#556688"
-                                   VerticalAlignment="Center"
-                                   ToolTip="드래그하여 너비 조절"
-                                   MouseLeftButtonDown="ResizeGrip_MouseLeftButtonDown"/>
-                    </StackPanel>
+                    <!-- 리사이즈 그립 -->
+                    <TextBlock Text="◢" FontSize="10"
+                               HorizontalAlignment="Right"
+                               Cursor="SizeWE"
+                               Foreground="#556688"
+                               VerticalAlignment="Center"
+                               ToolTip="드래그하여 너비 조절"
+                               MouseLeftButtonDown="ResizeGrip_MouseLeftButtonDown"/>
                 </Grid>
             </Border>
 

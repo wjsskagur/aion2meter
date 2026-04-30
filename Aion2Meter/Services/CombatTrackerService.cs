@@ -128,10 +128,12 @@ public class CombatTrackerService : IDisposable
 
     public uint LocalPlayerId { get; set; }
     public bool FilterByBossTarget { get; set; } = false;
-    public bool FilterByKnownPlayers { get; set; } = false;  // 기본 OFF - 닉네임 패킷 없어도 동작
+    public bool FilterByKnownPlayers { get; set; } = true;
     public string SortBy { get; set; } = "TotalDamage";
     public int AutoEndSeconds { get; set; } = 10;
     public bool PinLocalPlayer { get; set; } = false;
+    /// <summary>보스 HP 패킷 기준 생존 여부 — true이면 자동 종료 억제</summary>
+    public bool BossIsAlive { get; set; } = false;
 
     public ObservableCollection<PlayerStats> Players { get; } = new();
     public ObservableCollection<CombatSession> History { get; } = new();
@@ -355,8 +357,9 @@ public class CombatTrackerService : IDisposable
             player.DamagePercent = totalDmg > 0 ? (double)player.TotalDamage / totalDmg : 0;
         }
 
-        // 자동 종료 체크
-        if (_lastDamageTime != DateTime.MinValue &&
+        // 자동 종료 체크 (보스가 살아있으면 패턴 파훼 구간이므로 억제)
+        if (!BossIsAlive &&
+            _lastDamageTime != DateTime.MinValue &&
             (DateTime.Now - _lastDamageTime).TotalSeconds > AutoEndSeconds &&
             _currentSession?.IsActive == true)
         {

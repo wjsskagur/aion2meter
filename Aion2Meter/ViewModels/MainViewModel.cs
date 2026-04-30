@@ -41,6 +41,14 @@ public class MainViewModel : BaseViewModel
         set => SetProperty(ref _isInCombat, value);
     }
 
+    // 보스 패널 전용: HP 패킷 기준 (IsInCombat과 별도 관리)
+    private bool _isBossActive = false;
+    public bool IsBossActive
+    {
+        get => _isBossActive;
+        set => SetProperty(ref _isBossActive, value);
+    }
+
     private string _bossName = "-";
     public string BossName
     {
@@ -196,7 +204,8 @@ public class MainViewModel : BaseViewModel
             BossHpText    = _bossMaxHp > 0
                 ? $"{FormatNumber(e.currentHp)} / {FormatNumber(_bossMaxHp)}"
                 : FormatNumber(e.currentHp);
-            IsInCombat    = e.currentHp > 0;
+            IsBossActive          = e.currentHp > 0;
+            _tracker.BossIsAlive  = e.currentHp > 0;
 
             if (e.currentHp <= 0)
                 _tracker.EndCombat();
@@ -276,6 +285,12 @@ public class MainViewModel : BaseViewModel
     private void OnReset()
     {
         _tracker.Reset();
+        BossName             = "-";
+        BossHpText           = "";
+        BossHpPercent        = 0;
+        IsBossActive         = false;
+        _tracker.BossIsAlive = false;
+        _bossMaxHp           = 0;
         // 캡처 중이 아니면 재시도
         if (!IsCapturing)
             StartCapture();

@@ -658,16 +658,8 @@ public class PacketParserService
         int categorySkip = sw switch { 4 => 8, 5 => 12, 6 => 10, 7 => 14, _ => -1 };
         if (categorySkip < 0) return false;
 
-        // A2Viewer ComputeDamageFlags: 선택적 flagByte + 0x00 패딩 처리
-        int extraRead = 0;
-        if (packet.Length - offset > 1 && (offset + 2 >= packet.Length || packet[offset + 1] == 0))
-        {
-            offset += 2;   // flagByte + padding
-            extraRead = 2;
-        }
-        int remaining = categorySkip - extraRead;
-        if (remaining > 0 && offset + remaining <= packet.Length)
-            offset += remaining;
+        if (offset + categorySkip > packet.Length) return false;
+        offset += categorySkip;
 
         var unknownInfo = ReadVarInt(packet, offset); if (unknownInfo.length < 0) return false; offset += unknownInfo.length;
         var damageInfo  = ReadVarInt(packet, offset); if (damageInfo.length < 0)  return false; offset += damageInfo.length;
@@ -675,12 +667,7 @@ public class PacketParserService
         if (actorInfo.value == targetInfo.value) return false;
         if (damageInfo.value <= 0 || damageInfo.value >= 10_000_000) return true;
 
-        // 멀티히트 파싱 (A2Viewer TryParseMultiHit)
-        int multiHitDamage = 0;
-        if (packet.Length - offset >= 2)
-            multiHitDamage = ParseMultiHit(packet, offset, packet.Length, (uint)damageInfo.value);
-
-        long totalDamage = damageInfo.value + multiHitDamage;
+        long totalDamage = (long)damageInfo.value;
 
         // 몬스터 누적 피해 추적 (A2Viewer TryConfirmBossDeathByDamage)
         TrackMobDamage(targetInfo.value, totalDamage);
