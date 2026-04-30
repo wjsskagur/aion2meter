@@ -206,6 +206,22 @@ public class PacketParserService
         return "";
     }
 
+    /// <summary>
+    /// 스킬 변형 코드를 기본 코드로 정규화 (GetSkillName과 동일한 단계).
+    /// 같은 스킬이 여러 키로 분산되지 않도록 dict 키를 통일하기 위해 사용.
+    /// </summary>
+    private static long NormalizeSkillCode(long skillId)
+    {
+        EnsureSkillDb();
+        if (_skillDb.ContainsKey(skillId)) return skillId;
+        var b0 = (skillId / 10) * 10;
+        if (_skillDb.ContainsKey(b0)) return b0;
+        if (_skillDb.ContainsKey(skillId / 10)) return skillId / 10;
+        if (_skillDb.ContainsKey(skillId / 100)) return skillId / 100;
+        if (_skillDb.ContainsKey(skillId / 1000)) return skillId / 1000;
+        return skillId;
+    }
+
     // ══════════════════════════════════════════════════════════════════
     // 직업 추론
     // ══════════════════════════════════════════════════════════════════
@@ -600,10 +616,14 @@ public class PacketParserService
             isBoss  = false;
         }
 
-        // 허수아비/샌드백(훈련용 더미): DPS 추적 제외
+        // 허수아비/샌드백(훈련용 더미): DPS 추적 완전 차단
         if (mobName.Contains("허수아비") || mobName.Contains("샌드백"))
         {
             _confirmedMobIds.TryRemove(entityInfo.value, out _);
+            // 파서 측 _confirmedPlayerIds 등록 → ParseBossHp 필터에서 HP 패킷 무시
+            _confirmedPlayerIds.TryAdd(entityInfo.value, 0);
+            // 트래커 측 _confirmedPlayerIds 등록 → ProcessEvent의 타겟 필터가 차단
+            OnEntityInfoEvent?.Invoke(((uint)entityInfo.value, mobName, false, -1));
             return false;
         }
 
@@ -665,7 +685,7 @@ public class PacketParserService
         var damageInfo  = ReadVarInt(packet, offset); if (damageInfo.length < 0)  return false; offset += damageInfo.length;
 
         if (actorInfo.value == targetInfo.value) return false;
-        if (damageInfo.value <= 0 || damageInfo.value >= 10_000_000) return true;
+        if (damageInfo.value <= 0 || damageInfo.value >= 1_000_000_000L) return true;
 
         long totalDamage = (long)damageInfo.value;
 
@@ -674,6 +694,10 @@ public class PacketParserService
 
         DetectClassFromSkill(actorInfo.value, skillCode);
 
+        // 스킬 코드 정규화: 변형 코드(12092351)를 기본 코드(12092300 등)로 통일
+        // → 같은 스킬이 여러 SkillId로 분산되지 않도록
+        long normalizedSkill = NormalizeSkillCode(skillCode);
+
         OnDamageEvent?.Invoke(new
         {
             type         = "damage",
@@ -681,7 +705,7 @@ public class PacketParserService
             attackerName = GetDisplayName(actorInfo.value, $"플레이어_{actorInfo.value % 1000:D3}"),
             targetId     = (uint)targetInfo.value,
             targetName   = GetDisplayName(targetInfo.value, $"플레이어_{targetInfo.value % 1000:D3}"),
-            skillId      = (uint)skillCode,
+            skillId      = (uint)normalizedSkill,
             skillName    = GetSkillName(skillCode),
             damage       = totalDamage,
             isCritical   = typeInfo.value == 3,
@@ -724,6 +748,8 @@ public class PacketParserService
         TrackMobDamage(targetInfo.value, damageInfo.value);
         DetectClassFromSkill(actorInfo.value, skillCode);
 
+        long normalizedDotSkill = NormalizeSkillCode(skillCode);
+
         OnDamageEvent?.Invoke(new
         {
             type         = "damage",
@@ -731,7 +757,7 @@ public class PacketParserService
             attackerName = GetDisplayName(actorInfo.value, $"플레이어_{actorInfo.value % 1000:D3}"),
             targetId     = (uint)targetInfo.value,
             targetName   = GetDisplayName(targetInfo.value, $"플레이어_{targetInfo.value % 1000:D3}"),
-            skillId      = (uint)skillCode,
+            skillId      = (uint)normalizedDotSkill,
             skillName    = GetSkillName(skillCode),
             damage       = (long)damageInfo.value,
             isCritical   = false,
