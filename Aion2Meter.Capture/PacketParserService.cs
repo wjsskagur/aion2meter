@@ -27,6 +27,8 @@ public class PacketParserService
     private readonly ConcurrentDictionary<int, byte> _confirmedPlayerIds = new();
     // SPAWN 패킷(0x40 0x36) 수신 → 몬스터 확정
     private readonly ConcurrentDictionary<int, byte> _confirmedMobIds = new();
+    // mobs.json boss=true 확정 보스 ID (ParseBossHp 우선 처리용)
+    private readonly ConcurrentDictionary<int, byte> _confirmedBossIds = new();
 
     /// <summary>플레이어 여부 (ENTITY 패킷 수신 기준)</summary>
     public bool IsConfirmedPlayer(int entityId) => _confirmedPlayerIds.ContainsKey(entityId);
@@ -588,43 +590,59 @@ public class PacketParserService
 
         var entityInfo = ReadVarInt(packet, offset);
         if (entityInfo.length < 0) return false;
+        int payloadStart = offset + entityInfo.length; // entityId 이후 시작
 
-        // A2Viewer ScanMobCodeMarker 방식
+        // 0x40 0x36 패킷 확정 → 무조건 몬스터로 등록 (이하 로직 실패해도 유지)
+        _confirmedMobIds.TryAdd(entityInfo.value, 0);
+        // isBoss 확정은 mobs.json 조회 후 아래에서 설정
+
+        string mobName;
+        bool isBoss = false;
+        int maxHpSearchStart = payloadStart;
+
+        // ── A2Viewer ScanMobCodeMarker 방식으로 mobCode 추출 ──────────
         int codeIdx = FindBytes(packet, 0x00, 0x40, 0x02);
         if (codeIdx < 3) codeIdx = FindBytes(packet, 0x00, 0x00, 0x02);
-        if (codeIdx < 3) return false;
 
-        int mobCode = (packet[codeIdx-1] << 16) | (packet[codeIdx-2] << 8) | packet[codeIdx-3];
-        if (mobCode <= 0) return false;
-
-        _mobCodeMap[entityInfo.value] = mobCode;
-        _confirmedMobIds.TryAdd(entityInfo.value, 0);  // 몬스터 확정
-
-        EnsureMobDb();
-        string mobName;
-        bool isBoss;
-        if (_mobDb.TryGetValue(mobCode, out var mob))
+        if (codeIdx >= 3)
         {
-            mobName = mob.name;
-            isBoss  = mob.boss;
+            int mobCode = (packet[codeIdx-1] << 16) | (packet[codeIdx-2] << 8) | packet[codeIdx-3];
+            if (mobCode > 0)
+            {
+                _mobCodeMap[entityInfo.value] = mobCode;
+                maxHpSearchStart = codeIdx + 3;
+
+                EnsureMobDb();
+                if (_mobDb.TryGetValue(mobCode, out var mob))
+                {
+                    mobName = mob.name;
+                    isBoss  = mob.boss;
+                }
+                else
+                {
+                    // mobs.json 미등록 → 패킷에서 직접 추출
+                    string? ex = TryExtractMobNameFromPacket(packet, codeIdx + 3, 128);
+                    mobName = ex ?? $"Mob_{mobCode}";
+                }
+            }
+            else
+            {
+                // mobCode == 0: 직접 추출
+                string? ex = TryExtractMobNameFromPacket(packet, payloadStart, 256);
+                mobName = ex ?? $"Mob_{entityInfo.value}";
+            }
         }
         else
         {
-            // mobs.json 미등록 몬스터: 패킷에서 직접 이름 추출 시도
-            string? extracted = TryExtractMobNameFromPacket(packet, codeIdx + 3);
-            mobName = extracted ?? $"Mob_{mobCode}";
-            isBoss  = false;
+            // 마커 미발견: 패킷 전체에서 직접 이름 추출
+            string? ex = TryExtractMobNameFromPacket(packet, payloadStart, 256);
+            mobName = ex ?? $"Mob_{entityInfo.value}";
         }
 
         // 허수아비/샌드백(훈련용 더미): HP 바만 차단, DPS 측정은 허용
         if (mobName.Contains("허수아비") || mobName.Contains("샌드백"))
         {
-            // 파서 측 _confirmedPlayerIds 등록 → ParseBossHp가 HP 패킷 무시 (HP 바 미표시)
-            _confirmedPlayerIds.TryAdd(entityInfo.value, 0);
-            // OnEntityInfoEvent는 발행하지 않음
-            // → 트래커의 _confirmedPlayerIds에 등록되지 않음
-            // → 허수아비 타겟 데미지가 차단되지 않음 (DPS 측정 가능)
-            // OnSpawnEvent 정상 발행 → 트래커가 mob으로 등록, 데미지 집계 가능
+            _confirmedPlayerIds.TryAdd(entityInfo.value, 0); // HP 패킷 무시
             _entityNames[entityInfo.value] = mobName;
             Console.WriteLine($"[SPAWN-DUMMY] entityId={entityInfo.value} name={mobName}");
             OnSpawnEvent?.Invoke(((uint)entityInfo.value, mobName, false));
@@ -633,21 +651,22 @@ public class PacketParserService
 
         _entityNames[entityInfo.value] = mobName;
 
-        // 스폰 패킷에서 maxHp 추출 (몹 코드 마커 이후 67바이트 스캔)
-        // A2Viewer TryParseMobInfo 방식: 0x01 마커 → currentHp VarInt → maxHp VarInt
+        // 확정 보스 등록 (HP 패킷 우선 처리용)
+        if (isBoss) _confirmedBossIds.TryAdd(entityInfo.value, 0);
+
+        // 보스이면 스폰 패킷에서 maxHp 추출
         if (isBoss)
         {
-            long maxHp = TryExtractMobMaxHp(packet, codeIdx + 3, packet.Length);
+            long maxHp = TryExtractMobMaxHp(packet, maxHpSearchStart, packet.Length);
             if (maxHp > 0)
             {
-                // 가라앉은 에몬 HP 보정 (A2Viewer ResolveEmonHp)
                 if (mobName == "가라앉은 에몬")
                     maxHp = ResolveEmonHp(maxHp);
                 OnBossHpEvent?.Invoke(((uint)entityInfo.value, mobName, maxHp, maxHp));
             }
         }
 
-        Console.WriteLine($"[SPAWN] entityId={entityInfo.value} mobCode={mobCode} name={mobName} boss={isBoss}");
+        Console.WriteLine($"[SPAWN] entityId={entityInfo.value} name={mobName} boss={isBoss}");
         OnSpawnEvent?.Invoke(((uint)entityInfo.value, mobName, isBoss));
         return true;
     }
@@ -777,7 +796,12 @@ public class PacketParserService
     private bool ParseBossHp(byte[] packet, VarIntResult li, bool extra)
     {
         int end = packet.Length;
-        // A2Viewer 방식: 0x8D(141) 바이트를 전체 스캔
+
+        // 유효한 HP 항목을 모두 수집한 뒤 보스 우선 선택
+        // (잡몹 HP 패킷이 먼저 오더라도 확정 보스를 우선 표시)
+        (int entityId, int currentHp)? bestBoss   = null; // _confirmedBossIds 보스
+        (int entityId, int currentHp)? anyMob     = null; // 첫 번째 유효 몹 (폴백)
+
         for (int i = li.length; i < end - 10; i++)
         {
             if (packet[i] != 0x8D) continue;
@@ -795,22 +819,31 @@ public class PacketParserService
             int currentHp = ReadInt32LE(packet, offset);
             offset += 4;
 
-            // 뒤 4바이트 반드시 0x00000000 (A2Viewer 검증 조건)
-            // maxHp는 이 패킷에 없음 - 스폰 패킷에서 획득
+            // 뒤 4바이트 반드시 0x00000000
             if (offset + 4 > end || ReadInt32LE(packet, offset) != 0) continue;
             if (currentHp <= 0) continue;
 
             // 플레이어 엔티티 제외
             if (_confirmedPlayerIds.ContainsKey(entityInfo.value)) continue;
 
-            string bossName = _entityNames.TryGetValue(entityInfo.value, out var bn) ? bn : $"Boss_{entityInfo.value}";
-            OnBossHpEvent?.Invoke(((uint)entityInfo.value, bossName, (long)currentHp, 0));
-            // HP 스냅샷 저장 (TryConfirmBossDeathByDamage용)
-            long curDmg = _mobTotalDamageTaken.TryGetValue(entityInfo.value, out var d) ? d : 0;
-            _mobHpSnapshot[(int)entityInfo.value] = ((long)currentHp, curDmg);
-            return true;
+            if (_confirmedBossIds.ContainsKey(entityInfo.value))
+            {
+                bestBoss = (entityInfo.value, currentHp);
+                break; // 확정 보스를 찾으면 즉시 사용
+            }
+
+            anyMob ??= (entityInfo.value, currentHp); // 첫 번째 유효 몹 저장
         }
-        return false;
+
+        var chosen = bestBoss ?? anyMob;
+        if (chosen == null) return false;
+
+        string bossName = _entityNames.TryGetValue(chosen.Value.entityId, out var bn)
+            ? bn : $"Boss_{chosen.Value.entityId}";
+        OnBossHpEvent?.Invoke(((uint)chosen.Value.entityId, bossName, chosen.Value.currentHp, 0));
+        long curDmg = _mobTotalDamageTaken.TryGetValue(chosen.Value.entityId, out var d) ? d : 0;
+        _mobHpSnapshot[chosen.Value.entityId] = (chosen.Value.currentHp, curDmg);
+        return true;
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -1129,9 +1162,9 @@ public class PacketParserService
     /// \uC2A4\uD3F0 \uD328\uD0B7\uC5D0\uC11C mobs.json \uBBF8\uB4F1\uB85D \uBAAC\uC2A4\uD130\uC758 \uC774\uB984 \uCD94\uCD9C \uC2DC\uB3C4.
     /// \uBAB9 \uCF54\uB4DC \uB9C8\uCEE4 \uC774\uD6C4 \uAD6C\uAC04\uC744 \uC2A4\uCE94\uD574 \uAE38\uC774 \uC811\uB450 UTF-8 \uBB38\uC790\uC5F4\uC744 \uCC3E\uC74C.
     /// </summary>
-    private static string? TryExtractMobNameFromPacket(byte[] packet, int startOffset)
+    private static string? TryExtractMobNameFromPacket(byte[] packet, int startOffset, int maxSearch = 96)
     {
-        int limit = Math.Min(startOffset + 96, packet.Length);
+        int limit = Math.Min(startOffset + maxSearch, packet.Length);
         for (int i = startOffset; i < limit; i++)
         {
             var nli = ReadVarInt(packet, i);
