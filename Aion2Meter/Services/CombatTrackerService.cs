@@ -286,8 +286,6 @@ public class CombatTrackerService : IDisposable
             }
             _currentSession = null;
             _totalPartyDamageCache = 0;
-            _confirmedPlayerIds.Clear();
-            _confirmedMobIds.Clear();
         }
         if (toSave != null)
         {

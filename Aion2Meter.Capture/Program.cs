@@ -276,9 +276,9 @@ void ScanNickPatterns(byte[] data)
         try { nick = System.Text.Encoding.UTF8.GetString(data, dataStart, value); }
         catch { continue; }
 
-        bool valid = nick.Length >= 2 && nick.All(c =>
-            (c >= '가' && c <= '힣') || (c >= 'a' && c <= 'z') ||
-            (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'));
+        bool valid = nick.Length >= 2 &&
+            nick.All(c => (c >= '가' && c <= '힣') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) &&
+            nick.Any(c => (c >= '가' && c <= '힣') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
         if (!valid) continue;
 
         Console.WriteLine($"[NICKANCHOR-MULTI] nick={nick}");

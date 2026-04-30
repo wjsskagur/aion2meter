@@ -687,11 +687,13 @@ public class PacketParserService
 
         var targetInfo = ReadVarInt(packet, offset); if (targetInfo.length < 0) return false; offset += targetInfo.length;
         var switchInfo = ReadVarInt(packet, offset); if (switchInfo.length < 0) return false; offset += switchInfo.length;
-        var flagInfo   = ReadVarInt(packet, offset); if (flagInfo.length < 0)   return false; offset += flagInfo.length;
+        var skipVi     = ReadVarInt(packet, offset); if (skipVi.length < 0)     return false; offset += skipVi.length;
         var actorInfo  = ReadVarInt(packet, offset); if (actorInfo.length < 0)  return false; offset += actorInfo.length;
 
-        if (offset + 5 >= packet.Length) return false;
-        int skillCode = ReadInt32LE(packet, offset); offset += 5;
+        // Fix: A2Viewer ResolveFromPacketBytes - 최대 7바이트 스캔, raw*10+1/raw*10 으로 DB 조회
+        if (offset + 5 > packet.Length) return false;
+        int skillCode = ResolveSkillFromBytes(packet, ref offset);
+        if (skillCode == 0) return false;
         if (_subHitParentMap.TryGetValue(skillCode, out int parentSkill))
             skillCode = parentSkill;
 
@@ -701,8 +703,14 @@ public class PacketParserService
         int categorySkip = sw switch { 4 => 8, 5 => 12, 6 => 10, 7 => 14, _ => -1 };
         if (categorySkip < 0) return false;
 
-        if (offset + categorySkip > packet.Length) return false;
-        offset += categorySkip;
+        // Fix: A2Viewer flagByte 감지 - typeInfo 직후 두 번째 바이트가 0x00이면 2바이트 소비 후 categorySkip 조정
+        if (packet.Length - offset > 1 && (offset + 2 >= packet.Length || packet[offset + 1] == 0))
+        {
+            offset += 2;
+            categorySkip -= 2;
+        }
+        if (categorySkip > 0 && offset + categorySkip <= packet.Length)
+            offset += categorySkip;
 
         var unknownInfo = ReadVarInt(packet, offset); if (unknownInfo.length < 0) return false; offset += unknownInfo.length;
         var damageInfo  = ReadVarInt(packet, offset); if (damageInfo.length < 0)  return false; offset += damageInfo.length;
@@ -712,13 +720,15 @@ public class PacketParserService
 
         long totalDamage = (long)damageInfo.value;
 
-        // 몬스터 누적 피해 추적 (A2Viewer TryConfirmBossDeathByDamage)
+        // Fix: A2Viewer TryParseMultiHit 호출 - offset 갱신 (mainDamage에 multiHit 이미 포함)
+        if (packet.Length - offset >= 2)
+        {
+            var (_, mhEnd) = ParseMultiHit(packet, offset, packet.Length, (uint)totalDamage);
+            offset = mhEnd;
+        }
+
         TrackMobDamage(targetInfo.value, totalDamage);
-
         DetectClassFromSkill(actorInfo.value, skillCode);
-
-        // 스킬 코드 정규화: 변형 코드(12092351)를 기본 코드(12092300 등)로 통일
-        // → 같은 스킬이 여러 SkillId로 분산되지 않도록
         long normalizedSkill = NormalizeSkillCode(skillCode);
 
         OnDamageEvent?.Invoke(new
@@ -980,35 +990,76 @@ public class PacketParserService
         }
     }
 
-    /// <summary>
-    /// A2Viewer TryParseMultiHit: 멀티히트 추가 피해 합산.
-    /// damageInfo 이후 바이트에서 N개 VarInt 히트 데미지 읽기.
-    /// 조건: mainDamage의 0.5% 이상이어야 유효.
-    /// </summary>
-    private static int ParseMultiHit(byte[] packet, int pos, int end, uint mainDamage)
+    // A2Viewer ResolveFromPacketBytes: 최대 7바이트 스캔, raw*10+1/raw*10 으로 스킬DB 조회.
+    // 못 찾으면 고정 위치 Int32 fallback (미등록 스킬도 추적).
+    private static int ResolveSkillFromBytes(byte[] packet, ref int offset)
     {
-        // 0x01 마커 선택적 스킵
-        int tryPos = pos;
-        if (tryPos < end && packet[tryPos] == 0x01) tryPos++;
+        EnsureSkillDb();
+        int end = packet.Length;
+        for (int i = 0; i < 7 && offset + i + 4 <= end; i++)
+        {
+            int raw = ReadInt32LE(packet, offset + i);
+            if (raw <= 0 || (uint)raw >= 0x80000000u) continue;
 
-        var countVi = ReadVarInt(packet, tryPos);
-        if (countVi.length < 0 || countVi.value == 0 || countVi.value >= 100) return 0;
-        int offset = tryPos + countVi.length;
+            long c1 = (long)raw * 10L + 1;
+            long c2 = (long)raw * 10L;
+            if (c1 < 2147483648L && _skillDb.ContainsKey(c1)) { offset += i + 5; return (int)c1; }
+            if (c2 < 2147483648L && _skillDb.ContainsKey(c2)) { offset += i + 5; return (int)c2; }
+
+            if (raw % 100 == 0)
+            {
+                long b = raw / 100;
+                long bc1 = b * 10L + 1, bc2 = b * 10L;
+                if (bc1 < 2147483648L && _skillDb.ContainsKey(bc1)) { offset += i + 5; return (int)bc1; }
+                if (bc2 < 2147483648L && _skillDb.ContainsKey(bc2)) { offset += i + 5; return (int)bc2; }
+            }
+        }
+        if (offset + 4 <= end)
+        {
+            int raw = ReadInt32LE(packet, offset);
+            offset += 5;
+            return raw > 0 ? raw : 0;
+        }
+        return 0;
+    }
+
+    // A2Viewer TryParseMultiHit: pos와 pos+1(0x01 마커 뒤) 두 위치 시도.
+    // mainDamage에 multiHit이 이미 포함되므로 totalDamage는 변경 없음, offset만 갱신.
+    private static (int damage, int endPos) ParseMultiHit(byte[] packet, int pos, int end, uint mainDamage)
+    {
+        var r = ParseMultiHitAt(packet, pos, end, mainDamage);
+        if (r.damage > 0) return r;
+
+        if (pos + 1 < end && packet[pos] == 1)
+        {
+            r = ParseMultiHitAt(packet, pos + 1, end, mainDamage);
+            if (r.damage > 0) return r;
+        }
+        return (0, pos);
+    }
+
+    private static (int damage, int endPos) ParseMultiHitAt(byte[] packet, int pos, int end, uint mainDamage)
+    {
+        int startPos = pos;
+        var countVi = ReadVarInt(packet, pos);
+        if (countVi.length < 0 || countVi.value == 0 || countVi.value >= 100)
+            return (0, startPos);
+        pos += countVi.length;
 
         long total = 0;
         uint read = 0;
         for (; read < countVi.value; read++)
         {
-            if (offset >= end) break;
-            var vi = ReadVarInt(packet, offset);
+            if (pos >= end) break;
+            var vi = ReadVarInt(packet, pos);
             if (vi.length < 0) break;
             total += vi.value;
-            offset += vi.length;
+            pos += vi.length;
         }
 
-        if (read != countVi.value || total <= 0) return 0;
-        if (mainDamage != 0 && total < mainDamage * 0.005) return 0;
-        return (int)total;
+        if (read != countVi.value || total <= 0) return (0, startPos);
+        if (mainDamage != 0 && total < mainDamage * 0.005) return (0, startPos);
+        return ((int)total, pos);
     }
 
     // ══════════════════════════════════════════════════════════════════
